@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install AVR toolchain and simavr
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-avr avr-libc binutils-avr libsimavr-dev libelf-dev pkg-config make
+
+      - name: Lint scripts
+        run: shellcheck scripts/list-instructions.sh
+
+      - name: Build
+        run: make all size
+
+      - name: Test in simavr
+        run: make test
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: firmware-hex
+          path: build/*.hex
+          if-no-files-found: error

@@ -1,92 +1,113 @@
 # Write Stage Requirements
 
-The firmware drives the two write-head lines of a Famicom Disk System drive that uses the Mitsumi FD3206P controller, so that every write the RAM adapter requests reaches the disk.
+The firmware drives the two write-head lines of a Famicom Disk System drive that uses the Mitsumi FD3206P controller, so that every write the RAM adapter requests reaches the disk. Each requirement below has a matching test in [`test/src/__tests__/write-stage.test.ts`](../test/src/__tests__/write-stage.test.ts).
 
-## Inputs and outputs
+## Signals
 
-| Signal | Active level | FD3206P pin | Role |
+| Signal | Active level | FD3206P pin | RP2040 pin |
 |---|---|---|---|
-| WRITE DATA | falling edge | 6 | One head transition per falling edge |
-| /WRITE GATE | low | 4 | The RAM adapter is writing |
-| /WRITE PROTECT | low | 5 | The disk accepts writes |
-| /READY | low | 13 | The head is on the recording area |
-| HEAD 1 | pulled low | 15 | Write winding 1 |
-| HEAD 2 | pulled low | 14 | Write winding 2 |
+| WRITE DATA | falling edge | 6 | GP3 |
+| /WRITE GATE | low | 4 | GP4 |
+| /WRITE PROTECT | low | 5 | GP5 |
+| /READY | low | 13 | GP6 |
+| Head 1 drive | high turns the transistor on | 15, head side | GP7 |
+| Head 2 drive | high turns the transistor on | 14, head side | GP8 |
 
 ## Requirements
 
-### Requirement: the heads MUST float unless /READY, /WRITE PROTECT and /WRITE GATE are all low
-#### Scenario: gate inactive
-- GIVEN /READY low, /WRITE PROTECT low, /WRITE GATE high
+### Requirement: the head outputs MUST stay disabled unless /READY, /WRITE PROTECT and /WRITE GATE are all low
+#### Scenario: any one condition inactive
+- GIVEN one of the three conditions high and the other two low
 - WHEN 100 falling edges arrive on WRITE DATA
-- THEN neither head line is driven after any edge
+- THEN neither head output is enabled after any edge
 
-#### Scenario: write protected
-- GIVEN /READY low, /WRITE GATE low, /WRITE PROTECT high
-- WHEN 100 falling edges arrive
-- THEN neither head line is driven
-
-#### Scenario: not ready
-- GIVEN /WRITE GATE low, /WRITE PROTECT low, /READY high
-- WHEN 100 falling edges arrive
-- THEN neither head line is driven
-
-### Requirement: while writing, exactly one head MUST be pulled low, and the pulled head MUST change on every falling edge of WRITE DATA
+### Requirement: while writing, exactly one head MUST be driven, and the driven head MUST change on every falling edge of WRITE DATA
 #### Scenario: fastest legal data rate
-- GIVEN all three write conditions active
+- GIVEN all three conditions low
 - WHEN 1000 falling edges arrive 4.7 us apart
-- THEN after every edge exactly one head is pulled low and it is the other head from the previous edge
+- THEN after every edge exactly one head is driven, and it is the other head from the previous edge
 
 ### Requirement: a rising edge of WRITE DATA MUST NOT change the heads
 #### Scenario: 1 us low pulse
-- GIVEN all write conditions active
+- GIVEN all conditions low
 - WHEN WRITE DATA falls, stays low 1 us, then rises
 - THEN the heads change once, at the fall
 
-### Requirement: head lines MUST only be pulled low or left floating, never driven high
-#### Scenario: any state
-- GIVEN any combination of inputs
-- WHEN the head outputs are inspected
-- THEN their output latch is low and only their direction changes
-
-### Requirement: the head MUST switch within 1.5 us of a falling edge, with at most 0.375 us of variation
+### Requirement: the head MUST switch within 24 ns of a falling edge, with at most 8 ns of variation
 #### Scenario: edges at random phase
-- GIVEN all write conditions active
-- WHEN 1000 edges arrive at random phase relative to the firmware loop
-- THEN every edge-to-head delay is at most 1.5 us and the spread is at most 0.375 us
+- GIVEN all conditions low
+- WHEN 1000 edges arrive at random phase relative to the CPU
+- THEN every edge-to-head delay is at most 24 ns and the spread is at most 8 ns
 
-### Requirement: the heads MUST float within 5 us of any write condition going inactive, with no further data edges
-#### Scenario: each condition
-- GIVEN one head pulled low
-- WHEN /WRITE GATE, /WRITE PROTECT or /READY goes high and WRITE DATA stays idle
-- THEN both heads float within 5 us
+The emulator resolves PIO pin waits immediately, so this test proves the switch happens in the PIO without CPU involvement, not the silicon delay. The silicon delay is one to two PIO cycles and is checked with a logic analyzer on hardware.
 
-### Requirement: when all write conditions become active, the head selected by the edge parity MUST be pulled low within 5 us
+### Requirement: the heads MUST be released within 1 us of any condition going high
+#### Scenario: each condition, with no further data edges
+- GIVEN one head driven
+- WHEN /WRITE GATE, /WRITE PROTECT or /READY goes high
+- THEN both head outputs are disabled within 1 us
+
+### Requirement: when all conditions become low, the head selected by the edge parity MUST be driven within 1 us
 #### Scenario: even edge count
 - GIVEN 4 falling edges arrived while the gate was closed
 - WHEN /WRITE GATE goes low
-- THEN head 1 is pulled low within 5 us
+- THEN head 1 is driven within 1 us
 
 #### Scenario: odd edge count
 - GIVEN 5 falling edges arrived while the gate was closed
 - WHEN /WRITE GATE goes low
-- THEN head 2 is pulled low within 5 us
+- THEN head 2 is driven within 1 us
 
-### Requirement: after power-up no pin SHALL be driven
-#### Scenario: start-up
-- GIVEN power applied and the gate closed
+### Requirement: a write gate glitch shorter than the gate response time MUST NOT drive a head
+#### Scenario: 200 ns gate pulse
+- GIVEN the gate closed
+- WHEN /WRITE GATE goes low for 200 ns
+- THEN no head output changes and no write is logged
+
+### Requirement: after start-up only the console transmit pin and the activity LED SHALL be outputs
+#### Scenario: idle inputs
+- GIVEN all inputs high
 - WHEN start-up finishes
-- THEN every port direction register is zero
+- THEN no other pin has its output enabled, and the console reports a power-on start
 
-### Requirement: the firmware MUST run undivided from its clock and keep a watchdog armed
-#### Scenario: long write
-- GIVEN all write conditions active
-- WHEN 20000 edges arrive over about 100 ms
-- THEN the clock prescaler is 1, the watchdog enable bit is set and no reset occurs
+### Requirement: the activity LED MUST be lit exactly while writing
+#### Scenario: open then close the gate
+- GIVEN the firmware running
+- WHEN the conditions go low and then the gate closes
+- THEN the LED is lit while writing and off afterwards
+
+### Requirement: the watchdog MUST be armed and MUST NOT fire during normal operation
+#### Scenario: 600 ms write, longer than the 250 ms timeout
+- GIVEN all conditions low
+- WHEN edges arrive for 600 ms
+- THEN the watchdog enable bit is set, it never fires, and exactly one ready line was printed
+
+### Requirement: each finished write MUST be logged with its edge count, duration and average edge rate
+#### Scenario: 200 edges
+- GIVEN the gate open and 200 falling edges
+- WHEN the gate closes
+- THEN the console prints 200 edges, a duration within 3 us of the gate time, and the rate that count and duration give
+
+### Requirement: the status command MUST report writing state, write count and edge total
+#### Scenario: idle after one write
+- GIVEN one finished write of 200 edges
+- WHEN `s` is received
+- THEN the console prints `writing=no writes=1 edges=200`
+
+#### Scenario: during a write
+- GIVEN the gate open and no edges yet
+- WHEN `s` is received
+- THEN the console prints `writing=yes writes=1 edges=0`
+
+### Requirement: console input other than the status command MUST be ignored
+#### Scenario: unknown character
+- GIVEN the firmware idle
+- WHEN `x` is received
+- THEN nothing is printed
 
 ## Sources of the hardware facts
 
-- Controller pads for +5V, GND, /READY, /WRITE GATE, /WRITE PROTECT and WRITE DATA, and the head traces beside pins 14 and 15: the labelled solder-side photos in the Famicom World article "Famicom Disk System FD3206 Write Mod".
-- Head drive behaviour, one head per flip-flop state and both floating unless all three conditions hold: the 74LS76 plus 74LS45 schematic in the same article.
+- FD3206P pads for +5 V, GND, /READY, /WRITE GATE, /WRITE PROTECT and WRITE DATA, and the head traces beside pins 14 and 15: the labelled solder-side photos in the Famicom World article "Famicom Disk System FD3206 Write Mod".
+- Head drive behaviour, one head per flip-flop state and both released unless all three conditions hold: the 74LS76 and 74LS45 schematic in the same article.
 - 96.4 kHz bit rate, 10 percent tolerance, about 1 us pulses: Brad Taylor, "Famicom Disk System technical reference", nesdev.org.
-- ATtiny2313A pinout and electrical limits: Microchip document 8246. Fuse meanings: the avrdude 8 part database.
+- RP2040 PIO, GPIO override, IO bank interrupts and PWM edge counting: the RP2040 datasheet and pico-sdk 2.3.1.

@@ -1,0 +1,23 @@
+.program write_stage
+.side_set 2
+
+.wrap_target
+    wait 1 pin 0    side 0b01
+    wait 0 pin 0    side 0b01
+    wait 1 pin 0    side 0b10
+    wait 0 pin 0    side 0b10
+.wrap
+
+% c-sdk {
+static inline void write_stage_start(PIO pio, uint sm, uint data_pin, uint head_base) {
+    const uint offset = pio_add_program(pio, &write_stage_program);
+    pio_sm_config config = write_stage_program_get_default_config(offset);
+    sm_config_set_in_pins(&config, data_pin);
+    sm_config_set_sideset_pins(&config, head_base);
+    sm_config_set_clkdiv_int_frac8(&config, 1, 0);
+    hw_set_bits(&pio->input_sync_bypass, 1u << data_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, head_base, 2, true);
+    pio_sm_init(pio, sm, offset, &config);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

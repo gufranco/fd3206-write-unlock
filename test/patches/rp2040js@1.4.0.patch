@@ -1,0 +1,26 @@
+diff --git a/dist/cjs/peripherals/pwm.js b/dist/cjs/peripherals/pwm.js
+index eacbfa49cba189167fdbd5664216231102af58f0..38e59ecef436dd2618eb5a321d4e48884d0fc749 100644
+--- a/dist/cjs/peripherals/pwm.js
++++ b/dist/cjs/peripherals/pwm.js	
+@@ -356,7 +356,7 @@ class RPPWM extends peripheral_js_1.BasePeripheral {
+         return this.rp2040.gpio[index].inputValue;
+     }
+     gpioOnInput(index) {
+-        if (this.gpioDirection && 1 << index) {
++        if (this.gpioDirection & (1 << index)) {
+             return;
+         }
+         for (const channel of this.channels) {
+diff --git a/dist/esm/peripherals/pwm.js b/dist/esm/peripherals/pwm.js
+index 5e60422c31e0cdcf6f4a569092e4f5f3817d3ff6..7cb1a53e4fb2acf67f52fd449b81e2efd58da4a2 100644
+--- a/dist/esm/peripherals/pwm.js
++++ b/dist/esm/peripherals/pwm.js	
+@@ -353,7 +353,7 @@ export class RPPWM extends BasePeripheral {
+         return this.rp2040.gpio[index].inputValue;
+     }
+     gpioOnInput(index) {
+-        if (this.gpioDirection && 1 << index) {
++        if (this.gpioDirection & (1 << index)) {
+             return;
+         }
+         for (const channel of this.channels) {

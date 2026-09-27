@@ -1,2 +1,5 @@
 build/
+build-emulator/
+node_modules/
 .DS_Store
+!test/patches/*.patch

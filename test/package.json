@@ -1,0 +1,19 @@
+{
+  "name": "fdswriteunlock-emulator-tests",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.3",
+    "rp2040js": "1.4.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.2"
+  }
+}

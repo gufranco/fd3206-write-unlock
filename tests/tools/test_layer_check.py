@@ -1,8 +1,8 @@
 import io
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
-from unittest import mock
 
 from tools import layer_check
 
@@ -76,7 +76,7 @@ class MainTest(unittest.TestCase):
         clean = make_tree(CLEAN_TREE)
         dirty = make_tree({**CLEAN_TREE, "src/heads.c": "#include <avr/io.h>\n"})
 
-        with mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
+        with unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
             codes = (
                 layer_check.main(["layer_check.py", str(clean)]),
                 layer_check.main(["layer_check.py", str(dirty)]),

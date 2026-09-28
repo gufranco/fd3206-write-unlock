@@ -2,8 +2,8 @@ import io
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
-from unittest import mock
 
 from tools import doc_figures
 
@@ -131,10 +131,10 @@ class MainTest(unittest.TestCase):
     def run_main(self, root: Path, *extra: str) -> tuple[int, str]:
         outputs = {"avr-size": SIZE_OUTPUT, "avr-objdump": OBJDUMP_OUTPUT}
         with (
-            mock.patch.object(
+            unittest.mock.patch.object(
                 doc_figures, "run", side_effect=lambda command: outputs[command[0]]
             ),
-            mock.patch("sys.stderr", new_callable=io.StringIO) as errors,
+            unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors,
         ):
             code = doc_figures.main(self.arguments(root, *extra))
         return code, errors.getvalue()
@@ -186,7 +186,7 @@ class MainTest(unittest.TestCase):
         self.assertIn("markers", errors)
 
     def test_wrong_arguments_print_usage(self) -> None:
-        with mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
+        with unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
             code = doc_figures.main(["doc_figures.py"])
 
         self.assertEqual(code, 2)

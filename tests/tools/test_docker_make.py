@@ -1,8 +1,8 @@
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
-from unittest import mock
 
 from tools import docker_make
 
@@ -72,7 +72,7 @@ class ToolchainCommandTest(unittest.TestCase):
 
 class MainTest(unittest.TestCase):
     def test_existing_image_is_not_rebuilt_and_make_exit_code_is_returned(self) -> None:
-        with mock.patch.object(
+        with unittest.mock.patch.object(
             docker_make.subprocess, "run", side_effect=[completed(0), completed(3)]
         ) as run:
             exit_code = docker_make.main(["docker_make.py", "all"])
@@ -82,7 +82,7 @@ class MainTest(unittest.TestCase):
         self.assertEqual(run.call_args_list[1].args[0][-2:], ["make", "all"])
 
     def test_missing_image_is_built_before_make_runs(self) -> None:
-        with mock.patch.object(
+        with unittest.mock.patch.object(
             docker_make.subprocess,
             "run",
             side_effect=[completed(1), completed(0), completed(0)],

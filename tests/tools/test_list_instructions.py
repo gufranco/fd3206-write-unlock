@@ -1,7 +1,7 @@
 import io
 import subprocess
 import unittest
-from unittest import mock
+import unittest.mock
 
 from tools import list_instructions
 
@@ -68,7 +68,7 @@ class InstructionAddressesTest(unittest.TestCase):
 
 class MainTest(unittest.TestCase):
     def test_usage_error_without_objects(self) -> None:
-        with mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
+        with unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
             exit_code = list_instructions.main(
                 ["list_instructions.py", "objdump", "nm", "fw.elf"]
             )
@@ -78,10 +78,10 @@ class MainTest(unittest.TestCase):
 
     def test_fails_when_no_function_is_defined(self) -> None:
         with (
-            mock.patch.object(
+            unittest.mock.patch.object(
                 list_instructions.subprocess, "run", return_value=completed("")
             ),
-            mock.patch("sys.stderr", new_callable=io.StringIO) as errors,
+            unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors,
         ):
             exit_code = list_instructions.main(
                 ["list_instructions.py", "objdump", "nm", "fw.elf", "a.o"]
@@ -93,8 +93,10 @@ class MainTest(unittest.TestCase):
     def test_prints_one_line_per_instruction(self) -> None:
         outputs = [completed(NM_OUTPUT), completed(OBJDUMP_OUTPUT)]
         with (
-            mock.patch.object(list_instructions.subprocess, "run", side_effect=outputs),
-            mock.patch("builtins.print") as printed,
+            unittest.mock.patch.object(
+                list_instructions.subprocess, "run", side_effect=outputs
+            ),
+            unittest.mock.patch("builtins.print") as printed,
         ):
             exit_code = list_instructions.main(
                 ["list_instructions.py", "objdump", "nm", "fw.elf", "a.o"]

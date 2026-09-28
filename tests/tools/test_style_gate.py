@@ -1,8 +1,8 @@
 import io
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
-from unittest import mock
 
 from tools import style_gate
 
@@ -104,7 +104,7 @@ class MainTest(unittest.TestCase):
         (root / "clean.c").write_text(CLEAN_SOURCE)
         (root / "dirty.c").write_text("static long total;\n")
 
-        with mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
+        with unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
             clean_exit = style_gate.main(["style_gate.py", str(root / "clean.c")])
             dirty_exit = style_gate.main(
                 ["style_gate.py", str(root / "clean.c"), str(root / "dirty.c")]

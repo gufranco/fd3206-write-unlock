@@ -45,7 +45,7 @@ static bool expected[MAX_FLASH_BYTES];
 
 static avr_ioport_state_t port_state(const board_t *board, char port) {
     avr_ioport_state_t state = {0};
-    avr_ioctl(board->avr, AVR_IOCTL_IOPORT_GETSTATE(port), &state);
+    avr_ioctl(board->avr, (uint32_t)AVR_IOCTL_IOPORT_GETSTATE(port), &state);
     return state;
 }
 
@@ -121,7 +121,7 @@ static avr_t *load_avr(const char *mcu, const char *elf_path) {
 static void wire_inputs(board_t *board) {
     for (int signal = 0; signal < SIGNAL_COUNT; signal++) {
         const pin_t pin = SIGNAL_PINS[signal];
-        board->inputs[signal] = avr_io_getirq(board->avr, AVR_IOCTL_IOPORT_GETIRQ(pin.port), pin.bit);
+        board->inputs[signal] = avr_io_getirq(board->avr, (uint32_t)AVR_IOCTL_IOPORT_GETIRQ(pin.port), pin.bit);
         avr_raise_irq(board->inputs[signal], LEVEL_HIGH);
     }
 }

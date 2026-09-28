@@ -130,6 +130,10 @@ analyse: $(RELEASE_ELF) $(DEBUG_ELF)
 	$(PYTHON) -m tools.layer_check .
 	$(AVR_CC) -mmcu=$(MCU) $(C_STD) -fsyntax-only tests/type_widths.c
 	$(HOST_CC) $(C_STD) -fsyntax-only tests/type_widths.c
+	$(HOST_CC) $(SIM_CFLAGS) -fsigned-char -fsyntax-only $(SIM_TEST_C)
+	$(HOST_CC) $(SIM_CFLAGS) -funsigned-char -fsyntax-only $(SIM_TEST_C)
+	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -fsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
+	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -funsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
 	cppcheck $(CPPCHECK_FLAGS) $(FIRMWARE_C)
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELF)
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage run -m unittest discover -s tests/tools -t .

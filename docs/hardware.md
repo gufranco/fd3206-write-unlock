@@ -1,6 +1,6 @@
 # Hardware (as of 2026-09-28)
 
-**TL;DR:** a Famicom Disk System drive can have two write lockouts, and this chip removes only one. The FD3206P controller on the drive mechanism blocks whole-disk writes; the ATtiny fixes that with nothing cut. The power board, the second circuit board in the unit, also blocks writes on revisions FMD-POWER-04 and -05 and on some -02 boards, and that one needs its own modification. Identify the power board before anything else.
+**TL;DR:** a Famicom Disk System drive, standalone or built into a Sharp Twin Famicom, can have two write lockouts, and this chip removes only one. The FD3206P controller on the drive mechanism blocks whole-disk writes; the ATtiny fixes that with nothing cut. The power board, the second circuit board in the unit, also blocks writes on revisions FMD-POWER-04 and -05, on some -02 boards and on the Twin Famicom AN-500, and that one needs its own modification. Identify the power board before anything else.
 
 This has not yet been built on a drive.
 
@@ -22,6 +22,8 @@ A drive writes whole disks only when both lockouts are gone. An FD7201P drive ne
 3. Remove the two Phillips screws holding the battery compartment and set it aside.
 4. Remove the screws holding the power board and lift it out.
 5. Turn it component side up and find the text `©198X Nintendo` and the code `FMD-POWER-XX`.
+
+On a Sharp Twin Famicom skip this table and go to step 2d.
 
 | Label | Protected | What to do |
 |---|---|---|
@@ -57,6 +59,26 @@ No trace is cut on this board.
 1. Desolder the two jumper wires the article marks. One sits under the two black rectangular parts near the RAM adapter connection; bend those parts outward a little to reach it.
 2. Cut the two traces the article marks in red. Check with a meter that no connection remains across either cut.
 3. Solder the two wire links the article marks in blue. They route the write signals back to the drive mechanism.
+
+### 2d. Sharp Twin Famicom
+
+The Twin Famicom has the same Mitsumi drive mechanism, with an FD7201P or an FD3206P, but its own Sharp power board, so the FMD-POWER table above does not apply. Its lockout is removed with two wires instead of a board change: a 2014 nesdev forum post by Chris Covell, "Disabling copy protection ICs on Twin Famicom", with a photo, reports that it worked on his unit.
+
+1. Open the Twin Famicom and find the power board that the drive mechanism's cable runs through.
+2. Find the two grey wires: one goes into the power board and the other comes out of it.
+3. Disconnect or cut both from the power board.
+4. Join the two grey wires to each other, solder the joint and insulate it with heat-shrink or tape. The write signal now runs straight past the board's protection circuit.
+
+Wire colours are not guaranteed to match on every unit; trace both wires to the power board before cutting anything. Other forum reports `(as of 2026-09)`:
+
+| Model | Report |
+|---|---|
+| Twin Famicom, model not stated | Chris Covell reports the two-wire change worked, 2014 |
+| AN-500B, FD7201P drive | two owners, in 2014 and 2018, were told the two-wire change is the only one needed; neither posted a result |
+| any Twin with an FD3206P drive | the FD3206P lockout remains after the two-wire change, so it also needs the chip in step 3 |
+| AN-505 | a nesdev post from 2026-09-03 relays a Discord discussion saying this model has no protection; not confirmed by a photo or a test |
+
+Sources: nesdev forum threads 11342, 17037 and 19856, and the thread "Disable copy protection on the Twin Famicom AN-505BK".
 
 ## Step 3: install the chip, FD3206P drives only
 

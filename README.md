@@ -10,7 +10,7 @@ Drives built from late 1988 use the FD3206P controller in place of the earlier F
 
 ## Power board
 
-The chip is not always enough. The drive unit's second circuit board, the power board, carries the RAM adapter's signals to the drive mechanism, and revisions FMD-POWER-04 and -05, plus some -02 boards fitted with a green daughterboard, have a write lockout of their own. It blocks rewriting even on FD7201P drives, and no chip on the FD3206P can reach it.
+The chip is not always enough. The drive unit's second circuit board, the power board, carries the RAM adapter's signals to the drive mechanism, and revisions FMD-POWER-04 and -05, plus some -02 boards fitted with a green daughterboard, have a write lockout of their own, and so does the power board of the Sharp Twin Famicom AN-500. It blocks rewriting even on FD7201P drives, and no chip on the FD3206P can reach it.
 
 | Power board label | Change needed |
 |---|---|
@@ -19,6 +19,7 @@ The chip is not always enough. The drive unit's second circuit board, the power 
 | FMD-POWER-03 | not documented; presumed like -02 |
 | FMD-POWER-04 | remove JP14 and join points A and B with a wire |
 | FMD-POWER-05 | remove two jumper wires, cut two traces and add two wire links |
+| Sharp Twin Famicom AN-500 | disconnect the grey wire into the power board and the grey wire out of it, and join them to each other |
 
 Read the `FMD-POWER-XX` label before installing the chip. The steps are in [`docs/hardware.md`](docs/hardware.md); the photos marking each point are in the Famicom World article [FDS Power Board Modifications](https://famicomworld.com/workshop/tech/fds-power-board-modifications/). The no-cut rule of this project covers the drive mechanism; the power board change is a prerequisite outside it.
 

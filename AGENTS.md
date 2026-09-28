@@ -16,7 +16,7 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 6. **Never drive a pin whose FD3206P function is unknown.** Only pins 4, 5, 6, 10, 13, 14, 15 and 20 are soldered. Every other pin is clipped, kept an input, and given its internal pull-up so it cannot float.
 7. **C17 and MISRA C:2012 with zero deviations, built only in the pinned Docker toolchain.** C17 is the newest standard MISRA C:2012 and its amendments cover; C23 features, and the C11 features rule 1.4 calls emergent such as `_Noreturn`, are out. `make analyse` runs the cppcheck MISRA addon over the debug and the release configuration and fails on any finding; there is no deviation list. Every compile, check and test runs in the image described by [`Dockerfile`](Dockerfile). The host needs Docker and Python 3; `make` delegates to the container. Programming with `avrdude` is the one step that runs on the host. Released firmware is built by the release pipeline, never by an IDE.
 8. **NASA Power of 10, adapted below.** Every exception is listed in the table in this file; there are no others.
-9. **No comments in source files.** Names carry the meaning; explanation belongs here, in the READMEs, in the local `docs/` or in the commit message. [`tools/style_gate.py`](tools/style_gate.py) enforces it.
+9. **No comments in source files, except the two SPDX header lines.** Names carry the meaning; explanation belongs here, in the READMEs, in the local `docs/` or in the commit message. [`tools/style_gate.py`](tools/style_gate.py) enforces it.
 10. **Registers are touched only in assembly.** Every register access lives in [`src/port.S`](src/port.S) and the INT0 handler, behind the C prototypes in [`include/port/port.h`](include/port/port.h). No C file includes an `avr/` or `util/` header, because avr-libc reaches registers through integer-to-pointer casts that MISRA rule 11.4 forbids and through inline assembly the checker cannot see. The watchdog and clock-prescaler timed sequences in `port.S` follow the ATtiny2313A datasheet, Microchip document 8246, and are checked in simulation.
 11. **Scripts are Python 3.** Build tooling and checks are Python with 100 percent line and branch coverage; Make recipes call a Python module rather than growing shell logic. No bash, awk or perl.
 12. **READMEs are commercial and technical, never development.** The four READMEs are the single source for what the product is, how to install it and how it works, and they never link into `docs/`. Development material, including build internals, test tiers and ADRs, lives in `docs/` or `specs/`, which are gitignored and never pushed. A README change lands in all four languages in the same commit; `make analyse` checks that their figures blocks agree with the build.
@@ -92,7 +92,7 @@ The binding numbers, at the 8 MHz internal oscillator:
 | WRITE DATA low pulse | about 1 us | same reference |
 | Interrupt handler, whole | must finish under 4.7 us, 37 cycles; today about 30 | instruction count of `write_data_edge.S` |
 | Interrupt taken to head written | 10 cycles | same |
-| Gate response | under 10 us, one bit cell | a gate change falls in a gap of at least 480 bits, nesdev "FDS disk format" |
+| Gate response | under 10 us, one bit cell; 8.125 us worst today, swept across 64 main-loop phases | a gate change falls in a gap of at least 480 bits, nesdev "FDS disk format" |
 | Head pin sink current | 20 mA per pin | ATtiny2313A datasheet, Microchip document 8246 |
 
 A C interrupt that calls a helper saves every call-clobbered register and runs about 70 cycles, which is why the handler is assembly. Keep it free of `SREG` changes and of anything the C code owns: it reads and writes only `GPIOR0`, `GPIOR1`, `GPIOR2` and `DDRB`.
@@ -113,6 +113,7 @@ tests/tools/         unit tests of the Python tools
 tests/type_widths.c  compile-time record of type widths per compiler
 tools/               Python gates and helpers called by the Makefile
 docker/              pinned Python tool requirements for the image
+LICENSES/            licence texts for REUSE
 docs/                local only, gitignored: development guide, requirements spec, ADRs
 README*.md           commercial and technical description in English, Japanese, Simplified and Hong Kong Chinese
 build/               generated, never committed
@@ -127,7 +128,7 @@ make analyse    clang-format, ruff, style gate, layer check, type widths, cppche
 make test       host tests at 100 percent line and branch, then the simavr suite at 100 percent instructions
 make misra      the MISRA C:2012 gate alone, also part of analyse
 make figures    rewrite the README figures block
-make hooks      run analyse and test before every commit
+make hooks      run analyse and test before every commit and check each commit message
 make fuses      write lfuse 0xE4 and hfuse 0xD9 on the host, PROGRAMMER and PORT as needed
 make flash      program the chip from the host
 make clean      remove build output
@@ -135,11 +136,11 @@ make clean      remove build output
 
 ## Releases
 
-semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, attaches the `fdswriteunlock.hex` artifact that same CI run built and tested plus its SHA-256, signs a build-provenance attestation for the hex, and never rebuilds. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
+semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, downloads the `fdswriteunlock.hex` artifact that same CI run built and tested into a temporary directory, validates it with [`tools/check_hex.py`](tools/check_hex.py), and never rebuilds. Each release attaches the hex, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to the same hex, which meets SLSA Build Level 2. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
 
 ## Public repository
 
-The repository is public. Secret scanning with push protection, Dependabot alerts and security updates, and private vulnerability reporting are on; [`SECURITY.md`](SECURITY.md) routes reports there. Rulesets forbid deleting or force-pushing `main` and deleting or moving `v*` tags. [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) runs CodeQL over the workflows, the C sources and the Python tools, and [`.github/workflows/scorecard.yml`](.github/workflows/scorecard.yml) publishes the OpenSSF Scorecard. Nothing development-only is committed: `docs/` and `specs/` stay local, per hard rule 12. The GitHub description is copied from the README tagline and metrics, never written separately.
+The repository is public. Secret scanning with push protection, Dependabot alerts and security updates, and private vulnerability reporting are on; [`SECURITY.md`](SECURITY.md) routes reports there. Rulesets forbid deleting or force-pushing `main` and deleting or moving `v*` tags. [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) runs CodeQL over the workflows, the C sources and the Python tools, and [`.github/workflows/scorecard.yml`](.github/workflows/scorecard.yml) publishes the OpenSSF Scorecard. Every file carries SPDX headers or a [`REUSE.toml`](REUSE.toml) annotation, and `make analyse` runs `reuse lint`. [`tools/commit_message.py`](tools/commit_message.py) checks every pushed commit header in CI and, after `make hooks`, locally. Nothing development-only is committed: `docs/` and `specs/` stay local, per hard rule 12. The GitHub description is copied from the README tagline and metrics, never written separately.
 
 ## Measuring a change
 

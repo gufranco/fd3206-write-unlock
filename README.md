@@ -127,7 +127,7 @@ Timing at 8 MHz:
 | Interrupt taken to head written | 10 cycles, 1.25 us | instruction count of the handler |
 | Whole handler | about 30 cycles, 3.75 us | instruction count, under the 4.7 us shortest edge spacing |
 | Variation between edges | up to 2 cycles, 250 ns, from the instruction in progress | AVR interrupt response |
-| Gate change to heads released or engaged | under 10 us | simulation limit |
+| Gate change to heads released or engaged | 8.1 us at worst, limit 10 us | simulation, change swept across 64 main-loop phases |
 
 The drive records at 96.4 kHz, a bit cell of 10.4 us. 250 ns of variation is 2.4 percent of a cell. A gate change falls inside a gap between blocks of at least 480 bits, so microseconds of gate delay only trim or extend that gap.
 

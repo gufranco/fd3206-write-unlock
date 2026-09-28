@@ -14,12 +14,13 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 4. **Protection is allowed only when it is nearly free.** The watchdog, the brown-out fuse, pull-low outputs and debug-only assertions stay because each costs a few lines or nothing in the release image. Anything else needs a measured reason recorded here first.
 5. **A head pin pulls low or floats.** It is an output at 0 or an input, never an output at 1. The FD3206P shares pins 14 and 15, and a pin that never drives high cannot short against it.
 6. **Never drive a pin whose FD3206P function is unknown.** Only pins 4, 5, 6, 10, 13, 14, 15 and 20 are soldered. Every other pin is clipped, kept an input, and given its internal pull-up so it cannot float.
-7. **C23, built only in the pinned Docker toolchain.** Every compile, check and test runs in the image described by [`Dockerfile`](Dockerfile). The host needs Docker and Python 3; `make` delegates to the container. Programming with `avrdude` is the one step that runs on the host. See [ADR 0001](docs/adr/0001-c23-in-docker.md).
+7. **C23, built only in the pinned Docker toolchain.** Every compile, check and test runs in the image described by [`Dockerfile`](Dockerfile). The host needs Docker and Python 3; `make` delegates to the container. Programming with `avrdude` is the one step that runs on the host. The Arduino IDE ships avr-gcc 7.3, which has no C23, so it never builds the firmware.
 8. **NASA Power of 10, adapted below.** Every exception is listed in the table in this file; there are no others.
-9. **No comments in source files.** Names carry the meaning; explanation belongs here, in [`README.md`](README.md), in an ADR or in the commit message. [`tools/style_gate.py`](tools/style_gate.py) enforces it.
+9. **No comments in source files.** Names carry the meaning; explanation belongs here, in the READMEs, in the local `docs/` or in the commit message. [`tools/style_gate.py`](tools/style_gate.py) enforces it.
 10. **The library comes first.** `<avr/wdt.h>`, `<avr/power.h>` and `<avr/interrupt.h>` do their jobs; a hand-written equivalent is a defect.
 11. **Scripts are Python 3.** Build tooling and checks are Python with 100 percent line and branch coverage; Make recipes call a Python module rather than growing shell logic. No bash, awk or perl.
-12. **`make analyse test` passes before any commit.** `make hooks` installs a pre-commit hook that runs both.
+12. **READMEs are commercial and technical, never development.** The four READMEs are the single source for what the product is, how to install it and how it works, and they never link into `docs/`. Development material, including build internals, test tiers, MISRA deviations and ADRs, lives in `docs/` or `specs/`, which are gitignored and never pushed. A README change lands in all four languages in the same commit; `make analyse` checks that their figures blocks agree with the build.
+13. **`make analyse test` passes before any commit.** `make hooks` installs a pre-commit hook that runs both.
 
 ## Power of 10
 
@@ -32,9 +33,9 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 | 5. Two assertions per function | every function with logic carries two `FDSWU_ASSERT`; compiled in with `FDSWU_DEBUG` for the debug ELF and the host tests, out of the release image | `toggled` and `fdswu_conditions_allow` are single expressions, `main` is the loop itself, and `fdswu_assert_fail` is where assertions land |
 | 6. Smallest scope for data | file-scope state is limited to the three GPIOR registers the edge handler shares | none |
 | 7. Check every return value and parameter | `[[nodiscard]]` on every function that returns a value | none |
-| 8. Limited preprocessor | `#define` only for include guards, the assertion macro and names the assembly shares; constants are `constexpr`. See [ADR 0002](docs/adr/0002-constants.md) | none |
+| 8. Limited preprocessor | `#define` only for include guards, the assertion macro and names the assembly shares; constants are `constexpr` | none |
 | 9. Restricted pointers | no pointers in firmware code; the style gate rejects function pointers | register access through avr-libc macros |
-| 10. All warnings on, static analysers clean | `-Wall -Wextra -Wpedantic -pedantic-errors -Werror` plus conversion, shadow and prototype warnings; cppcheck `--enable=all --check-level=exhaustive` | MISRA C:2012 deviations in [`docs/misra.md`](docs/misra.md) |
+| 10. All warnings on, static analysers clean | `-Wall -Wextra -Wpedantic -pedantic-errors -Werror` plus conversion, shadow and prototype warnings; cppcheck `--enable=all --check-level=exhaustive` | MISRA C:2012 deviations, recorded in the local `docs/misra.md` |
 
 ## Types
 
@@ -51,7 +52,7 @@ Firmware code uses only `<stdint.h>` fixed-width types and `bool`. The style gat
 | `float` | 4 | 4 | 4 |
 | `double` | 4 | 8 | 8 |
 
-Naming follows BARR-C: `fdswu_` prefix on every external symbol, `_t` suffix on every type, `FDSWU_` on every constant and macro. See [ADR 0003](docs/adr/0003-naming-and-headers.md).
+Naming follows BARR-C: `fdswu_` prefix on every external symbol, `_t` suffix on every type, `FDSWU_` on every constant and macro.
 
 ## Layers
 
@@ -93,11 +94,11 @@ The binding numbers, at the 8 MHz internal oscillator:
 | Gate response | under 10 us, one bit cell | a gate change falls in a gap of at least 480 bits, nesdev "FDS disk format" |
 | Head pin sink current | 20 mA per pin | ATtiny2313A datasheet, Microchip document 8246 |
 
-A C interrupt that calls a helper saves every call-clobbered register and runs about 70 cycles, which is why the handler is assembly. Keep it free of `SREG` changes and of anything the C code owns: it reads and writes only `GPIOR0`, `GPIOR1`, `GPIOR2` and `DDRB`. See [ADR 0004](docs/adr/0004-assembly-edge-handler.md).
+A C interrupt that calls a helper saves every call-clobbered register and runs about 70 cycles, which is why the handler is assembly. Keep it free of `SREG` changes and of anything the C code owns: it reads and writes only `GPIOR0`, `GPIOR1`, `GPIOR2` and `DDRB`.
 
 ## Do not implement from a guess
 
-A hardware fact enters the code only with a source beside it in this file or in [`docs/requirements.md`](docs/requirements.md): a datasheet section, a labelled photo, a disassembly address. What the FD3206P does on its other twelve pins is not known and is not guessed. Neither is whether its head outputs are open collector, which is the one assumption the piggyback design still rests on.
+A hardware fact enters the code only with a source beside it in this file or in the README: a datasheet section, a labelled photo, a disassembly address. What the FD3206P does on its other twelve pins is not known and is not guessed. Neither is whether its head outputs are open collector, which is the one assumption the piggyback design still rests on.
 
 ## Layout
 
@@ -111,7 +112,8 @@ tests/tools/         unit tests of the Python tools
 tests/type_widths.c  compile-time record of type widths per compiler
 tools/               Python gates and helpers called by the Makefile
 docker/              pinned Python tool requirements for the image
-docs/                requirements, hardware guide, clean-room record, MISRA deviations, ADRs
+docs/                local only, gitignored: development guide, requirements spec, MISRA deviations, ADRs
+README*.md           commercial and technical description in English, Japanese, Simplified and Hong Kong Chinese
 build/               generated, never committed
 ```
 
@@ -151,7 +153,8 @@ make clean      remove build output
 | The GAL version soldered one of its outputs to FD3206P pin 12, whose function nobody knows | It came from a working install photo | hard rule 6 |
 | The global gitignore ignores `*.patch`, which hid a file from a commit | `git status` did not list it | `git check-ignore -v` on any generated file before committing |
 | avr-ld keeps `.L` labels for relaxation, so objdump shows them as function headers; the coverage list stopped each function at its first local label and held 47 of 76 instructions | The suite still reported 0 instructions never executed | `.L` headers continue the enclosing function in `tools/list_instructions.py`, with a test |
-| The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; see ADR 0001 |
+| The simavr ioctl macros build their code from a `char`; on x86_64 `char` is signed, so CI failed `-Wsign-conversion` while the aarch64 build was clean | The same image passed every gate on the Mac | `make analyse` compiles the harness and host tests with both `-fsigned-char` and `-funsigned-char` |
+| The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; hard rule 7 |
 
 ## Real hardware
 
@@ -163,7 +166,7 @@ Nothing in this repository can drive a drive or a programmer, so a hardware resu
 | Are the FD3206P head outputs open collector | the piggyback design assumes it and no document states it |
 | Does a whole-disk write read back | the 2C33's decoding margin is not modelled |
 | What the edge-to-head delay really is | simavr enters the interrupt without the input synchroniser delay |
-| Does the drive's power board also block writes | FMD-POWER-04, -05, some -02 boards and the Twin Famicom AN-500 power board carry their own write lockout, outside the FD3206P; see [`docs/hardware.md`](docs/hardware.md) |
+| Does the drive's power board also block writes | FMD-POWER-04, -05, some -02 boards and the Twin Famicom AN-500 power board carry their own write lockout, outside the FD3206P; see the power board steps in [`README.md`](README.md) |
 
 ## Emulators
 
@@ -173,4 +176,4 @@ simavr runs headless and opens nothing. Any other emulator used for a check runs
 
 - Nothing has run on a drive.
 - Whether single-file saves suffer from the FD3206P and the ATtiny writing the same heads out of phase is unknown. The classic GAL modchip has the same exposure.
-- The MISRA deviations in [`docs/misra.md`](docs/misra.md) await the owner's approval.
+- The MISRA deviations recorded in the local `docs/misra.md` await the owner's approval.

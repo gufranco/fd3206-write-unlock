@@ -12,7 +12,6 @@ UPDATE_FLAG = "--update"
 FLASH_SECTIONS = frozenset({".text", ".data"})
 SECTION_ROW = re.compile(r"^(\.\w+)\s+(\d+)\s+\d+$")
 SOURCE_GLOBS = ("src/*.c", "src/*.S", "include/**/*.h")
-README_NAME = "README.md"
 HANDLER_SYMBOL = "__vector_1"
 POSITIONAL_ARGUMENTS = 5
 USAGE_ERROR = 2
@@ -20,6 +19,46 @@ USAGE_ERROR = 2
 
 class MarkerError(ValueError):
     pass
+
+
+@dataclass(frozen=True, slots=True)
+class Labels:
+    header: str
+    flash: str
+    handler: str
+    source: str
+
+
+ENGLISH = Labels(
+    header="| Figure | Value |",
+    flash="| Flash used | {} bytes |",
+    handler="| Edge handler | {} instructions |",
+    source="| Firmware source | {} non-blank lines |",
+)
+JAPANESE = Labels(
+    header="| 項目 | 値 |",
+    flash="| フラッシュ使用量 | {} バイト |",
+    handler="| エッジ割り込みハンドラ | {} 命令 |",
+    source="| ファームウェアのソース | 空行を除き {} 行 |",
+)
+SIMPLIFIED_CHINESE = Labels(
+    header="| 项目 | 数值 |",
+    flash="| 闪存占用 | {} 字节 |",
+    handler="| 边沿中断处理程序 | {} 条指令 |",
+    source="| 固件源代码 | 非空行 {} 行 |",
+)
+HONG_KONG_CHINESE = Labels(
+    header="| 項目 | 數值 |",
+    flash="| 快閃記憶體用量 | {} 位元組 |",
+    handler="| 邊緣中斷處理程式 | {} 條指令 |",
+    source="| 韌體原始碼 | 非空行 {} 行 |",
+)
+READMES = {
+    "README.md": ENGLISH,
+    "README.ja.md": JAPANESE,
+    "README.zh-CN.md": SIMPLIFIED_CHINESE,
+    "README.zh-HK.md": HONG_KONG_CHINESE,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,14 +86,14 @@ def source_lines(root: Path) -> int:
     )
 
 
-def render(figures: Figures) -> str:
+def render(figures: Figures, labels: Labels) -> str:
     return "\n".join(
         [
-            "| Figure | Value |",
+            labels.header,
             "|---|---|",
-            f"| Flash used | {figures.flash_bytes} bytes |",
-            f"| Edge handler | {figures.handler_instructions} instructions |",
-            f"| Firmware source | {figures.source_lines} non-blank lines |",
+            labels.flash.format(figures.flash_bytes),
+            labels.handler.format(figures.handler_instructions),
+            labels.source.format(figures.source_lines),
         ]
     )
 
@@ -81,6 +120,22 @@ def measure(root: Path, size_tool: str, objdump_tool: str, elf: str) -> Figures:
     )
 
 
+def check_readme(readme: Path, figures: Figures, labels: Labels, update: bool) -> str:
+    if not readme.is_file():
+        return f"{readme}: missing"
+    current = readme.read_text()
+    try:
+        expected = replace_block(current, render(figures, labels))
+    except MarkerError as error:
+        return f"{readme}: figure markers: {error}"
+    if update:
+        readme.write_text(expected)
+        return ""
+    if expected != current:
+        return f"{readme}: figures are stale, run make figures"
+    return ""
+
+
 def main(arguments: list[str]) -> int:
     if len(arguments) < POSITIONAL_ARGUMENTS:
         print(
@@ -89,25 +144,16 @@ def main(arguments: list[str]) -> int:
         )
         return USAGE_ERROR
     root = Path(arguments[1])
-    readme = root / README_NAME
-    current = readme.read_text()
-    try:
-        expected = replace_block(
-            current, render(measure(root, *arguments[2:POSITIONAL_ARGUMENTS]))
-        )
-    except MarkerError as error:
-        print(f"{readme}: figure markers: {error}", file=sys.stderr)
-        return 1
-    if UPDATE_FLAG in arguments[POSITIONAL_ARGUMENTS:]:
-        readme.write_text(expected)
-        return 0
-    if expected != current:
-        print(
-            f"{readme}: figures are stale, run make figures",
-            file=sys.stderr,
-        )
-        return 1
-    return 0
+    figures = measure(root, *arguments[2:POSITIONAL_ARGUMENTS])
+    update = UPDATE_FLAG in arguments[POSITIONAL_ARGUMENTS:]
+    results = [
+        check_readme(root / name, figures, labels, update)
+        for name, labels in READMES.items()
+    ]
+    errors = [result for result in results if result]
+    for error in errors:
+        print(error, file=sys.stderr)
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":

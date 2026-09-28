@@ -48,7 +48,8 @@ def make_root() -> Path:
     (root / "src" / "a.c").write_text("one\ntwo\n\nthree\n")
     (root / "src" / "b.S").write_text("x\n")
     (root / "include" / "fdswu" / "a.h").write_text("y\nz\n")
-    (root / "README.md").write_text(README)
+    for name in doc_figures.READMES:
+        (root / name).write_text(README)
     return root
 
 
@@ -80,7 +81,9 @@ class RunTest(unittest.TestCase):
 
 class BlockTest(unittest.TestCase):
     def test_block_is_replaced_between_markers(self) -> None:
-        updated = doc_figures.replace_block(README, doc_figures.render(FIGURES))
+        updated = doc_figures.replace_block(
+            README, doc_figures.render(FIGURES, doc_figures.ENGLISH)
+        )
 
         self.assertIn("| Flash used | 320 bytes |", updated)
         self.assertNotIn("stale", updated)
@@ -88,7 +91,30 @@ class BlockTest(unittest.TestCase):
 
     def test_missing_markers_raise(self) -> None:
         with self.assertRaises(doc_figures.MarkerError):
-            doc_figures.replace_block("# no markers\n", doc_figures.render(FIGURES))
+            doc_figures.replace_block(
+                "# no markers\n", doc_figures.render(FIGURES, doc_figures.ENGLISH)
+            )
+
+    def test_japanese_labels_carry_the_same_values(self) -> None:
+        block = doc_figures.render(FIGURES, doc_figures.JAPANESE)
+
+        self.assertIn("| フラッシュ使用量 | 320 バイト |", block)
+        self.assertIn("| エッジ割り込みハンドラ | 3 命令 |", block)
+        self.assertIn("| ファームウェアのソース | 空行を除き 42 行 |", block)
+
+    def test_chinese_labels_carry_the_same_values(self) -> None:
+        simplified = doc_figures.render(FIGURES, doc_figures.SIMPLIFIED_CHINESE)
+        hong_kong = doc_figures.render(FIGURES, doc_figures.HONG_KONG_CHINESE)
+
+        self.assertIn("| 闪存占用 | 320 字节 |", simplified)
+        self.assertIn("| 快閃記憶體用量 | 320 位元組 |", hong_kong)
+
+    def test_every_language_has_a_readme(self) -> None:
+        names = sorted(doc_figures.READMES)
+
+        self.assertEqual(
+            names, ["README.ja.md", "README.md", "README.zh-CN.md", "README.zh-HK.md"]
+        )
 
 
 class MainTest(unittest.TestCase):
@@ -127,6 +153,28 @@ class MainTest(unittest.TestCase):
         results = (self.run_main(root, "--update")[0], self.run_main(root)[0])
 
         self.assertEqual(results, (0, 0))
+        self.assertIn("320 バイト", (root / "README.ja.md").read_text())
+        self.assertIn("320 位元組", (root / "README.zh-HK.md").read_text())
+
+    def test_stale_japanese_readme_alone_fails_the_check(self) -> None:
+        root = make_root()
+        self.run_main(root, "--update")
+        (root / "README.ja.md").write_text(README)
+
+        code, errors = self.run_main(root)
+
+        self.assertEqual(code, 1)
+        self.assertIn("README.ja.md", errors)
+        self.assertNotIn("README.md:", errors)
+
+    def test_missing_japanese_readme_fails(self) -> None:
+        root = make_root()
+        (root / "README.ja.md").unlink()
+
+        code, errors = self.run_main(root, "--update")
+
+        self.assertEqual(code, 1)
+        self.assertIn("README.ja.md: missing", errors)
 
     def test_missing_markers_fail(self) -> None:
         root = make_root()

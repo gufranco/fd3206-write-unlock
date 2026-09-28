@@ -36,12 +36,12 @@ static const write_conditions_t NOT_READY = {LEVEL_LOW, LEVEL_LOW, LEVEL_HIGH};
 static const char *target_mcu;
 static const char *target_elf;
 
-#define CHECK(condition)                                                                   \
-    do {                                                                                   \
-        if (!(condition)) {                                                                \
-            fprintf(stderr, "%s:%d: check failed: %s\n", __FILE__, __LINE__, #condition); \
-            return false;                                                                  \
-        }                                                                                  \
+#define CHECK(condition)                                                                                               \
+    do {                                                                                                               \
+        if (!(condition)) {                                                                                            \
+            fprintf(stderr, "%s:%d: check failed: %s\n", __FILE__, __LINE__, #condition);                              \
+            return false;                                                                                              \
+        }                                                                                                              \
     } while (0)
 
 static board_t *open_board(void) {
@@ -224,8 +224,8 @@ static bool heads_end_released_after_write_gate_glitch(void) {
 static bool startup_drives_no_pin_and_pulls_no_signal_line(void) {
     board_t *board = open_board();
 
-    const uint8_t driven = board_port_directions(board, 'A') | board_port_directions(board, 'B') |
-                           board_port_directions(board, 'D');
+    const uint8_t driven =
+        board_port_directions(board, 'A') | board_port_directions(board, 'B') | board_port_directions(board, 'D');
 
     const uint8_t pulled = (board_port_levels(board, 'A') & SIGNAL_PIN_BITS_A) |
                            (board_port_levels(board, 'B') & SIGNAL_PIN_BITS_B) |

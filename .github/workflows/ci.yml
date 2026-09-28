@@ -15,27 +15,24 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install AVR toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            gcc-avr avr-libc binutils-avr libsimavr-dev libelf-dev pkg-config make
-
       - name: Build firmware
         run: make all size
 
-      - name: Test in simavr
+      - name: Analyse
+        run: make analyse
+
+      - name: Test
         run: make test
 
       - name: Upload firmware
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fdswriteunlock-hex
-          path: build/fdswriteunlock.hex
+          path: build/release/fdswriteunlock.hex
           if-no-files-found: error

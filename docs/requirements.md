@@ -1,6 +1,6 @@
 # Write Stage Requirements
 
-The firmware drives the two write-head lines of a Famicom Disk System drive that uses the Mitsumi FD3206P controller, so that every write the RAM adapter requests reaches the disk. Each requirement below has a matching test in [`test/test_write_stage.c`](../test/test_write_stage.c).
+The firmware drives the two write-head lines of a Famicom Disk System drive that uses the Mitsumi FD3206P controller, so that every write the RAM adapter requests reaches the disk. Each requirement below has a matching scenario in [`tests/sim/sim_test.c`](../tests/sim/sim_test.c), run against the release image. The gating and head selection are also checked exhaustively on the host by [`tests/host/host_test.c`](../tests/host/host_test.c).
 
 ## Signals
 

@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import subprocess
+import sys
+
+GATE = ["make", "analyse", "test"]
+
+
+def main() -> int:
+    return subprocess.run(GATE, check=False).returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

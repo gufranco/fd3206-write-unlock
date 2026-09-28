@@ -1,68 +1,152 @@
-AVR_CC ?= avr-gcc
-AVR_OBJCOPY ?= avr-objcopy
-AVR_OBJDUMP ?= avr-objdump
-AVR_NM ?= avr-nm
-AVR_SIZE ?= avr-size
-AVRDUDE ?= avrdude
-HOST_CC ?= cc
-PKG_CONFIG ?= pkg-config
-
-MCU ?= attiny2313a
-AVRDUDE_PART ?= t2313a
-PROGRAMMER ?= usbasp
-PORT ?= usb
+MCU := attiny2313a
+AVRDUDE_PART := t2313a
+F_CPU := 8000000UL
 LFUSE := 0xE4
 HFUSE := 0xD9
 EFUSE := 0xFF
-F_CPU := 8000000UL
+PROGRAMMER ?= usbasp
+PORT ?= usb
+AVRDUDE ?= avrdude
+PYTHON ?= python3
 
-SKETCH := fdswriteunlock
 BUILD := build
-SOURCES := $(wildcard $(SKETCH)/*.c) $(wildcard $(SKETCH)/*.S)
-HEADERS := $(wildcard $(SKETCH)/*.h)
-OBJECTS := $(patsubst $(SKETCH)/%.S,$(BUILD)/%.o,$(SOURCES:$(SKETCH)/%.c=$(BUILD)/%.o))
+NAME := fdswriteunlock
+RELEASE := $(BUILD)/release
+DEBUG := $(BUILD)/debug
+RELEASE_ELF := $(RELEASE)/$(NAME).elf
+RELEASE_HEX := $(RELEASE)/$(NAME).hex
+DEBUG_ELF := $(DEBUG)/$(NAME).elf
 
-AVR_FLAGS := -mmcu=$(MCU) -DF_CPU=$(F_CPU) -std=gnu11 -Os -Wall -Wextra -Werror -ffunction-sections -fdata-sections
-AVR_LINK_FLAGS := -mmcu=$(MCU) -Wl,--gc-sections
-HOST_FLAGS := -std=c11 -O2 -Wall -Wextra -Werror -Wpedantic $(patsubst -I%,-isystem %,$(shell $(PKG_CONFIG) --cflags simavr libelf))
-HOST_LIBS := $(shell $(PKG_CONFIG) --libs simavr libelf)
+CONTAINER_TARGETS := all size analyse hosttest simtest test misra figures
 
-.PHONY: all size test clean fuses flash
+.PHONY: $(CONTAINER_TARGETS) fuses flash hooks clean
 
-all: $(BUILD)/$(SKETCH).hex
+clean:
+	rm -rf $(BUILD)
 
-$(BUILD):
-	mkdir -p $@
+ifndef FDSWU_TOOLCHAIN
 
-$(BUILD)/%.o: $(SKETCH)/%.c $(HEADERS) | $(BUILD)
-	$(AVR_CC) $(AVR_FLAGS) -c -o $@ $<
-
-$(BUILD)/%.o: $(SKETCH)/%.S | $(BUILD)
-	$(AVR_CC) -mmcu=$(MCU) -x assembler-with-cpp -Wall -Wextra -Werror -c -o $@ $<
-
-$(BUILD)/$(SKETCH).elf: $(OBJECTS)
-	$(AVR_CC) $(AVR_LINK_FLAGS) -o $@ $(OBJECTS)
-
-$(BUILD)/$(SKETCH).hex: $(BUILD)/$(SKETCH).elf
-	$(AVR_OBJCOPY) -O ihex -R .eeprom $< $@
-
-$(BUILD)/$(SKETCH).insn: $(BUILD)/$(SKETCH).elf tools/list_instructions.py
-	python3 tools/list_instructions.py $(AVR_OBJDUMP) $(AVR_NM) $< $(OBJECTS) > $@
-
-$(BUILD)/test_write_stage: test/test_write_stage.c test/board.c test/board.h | $(BUILD)
-	$(HOST_CC) $(HOST_FLAGS) -o $@ test/test_write_stage.c test/board.c $(HOST_LIBS)
-
-size: $(BUILD)/$(SKETCH).elf
-	$(AVR_SIZE) $<
-
-test: $(BUILD)/$(SKETCH).elf $(BUILD)/$(SKETCH).insn $(BUILD)/test_write_stage
-	$(BUILD)/test_write_stage $(MCU) $(BUILD)/$(SKETCH).elf $(BUILD)/$(SKETCH).insn
+$(CONTAINER_TARGETS):
+	$(PYTHON) tools/docker_make.py $@
 
 fuses:
 	$(AVRDUDE) -c $(PROGRAMMER) -P $(PORT) -p $(AVRDUDE_PART) -U lfuse:w:$(LFUSE):m -U hfuse:w:$(HFUSE):m -U efuse:w:$(EFUSE):m
 
-flash: $(BUILD)/$(SKETCH).hex
-	$(AVRDUDE) -c $(PROGRAMMER) -P $(PORT) -p $(AVRDUDE_PART) -U flash:w:$<:i
+flash: all
+	$(AVRDUDE) -c $(PROGRAMMER) -P $(PORT) -p $(AVRDUDE_PART) -U flash:w:$(RELEASE_HEX):i
 
-clean:
-	rm -rf $(BUILD)
+hooks:
+	git config core.hooksPath .githooks
+
+else
+
+AVR_CC := avr-gcc
+AVR_OBJCOPY := avr-objcopy
+AVR_OBJDUMP := avr-objdump
+AVR_NM := avr-nm
+AVR_SIZE := avr-size
+HOST_CC := gcc
+AVR_INCLUDE := /usr/lib/avr/include
+
+FIRMWARE_C := $(sort $(wildcard src/*.c))
+FIRMWARE_S := $(sort $(wildcard src/*.S))
+FIRMWARE_H := $(sort $(wildcard include/*/*.h))
+LOGIC_C := src/conditions.c src/heads.c
+HOST_TEST_C := tests/host/host_test.c tests/host/host_assert.c
+SIM_TEST_C := tests/sim/sim_test.c tests/sim/board.c
+C_FILES := $(FIRMWARE_C) $(FIRMWARE_H) $(HOST_TEST_C) $(SIM_TEST_C) tests/sim/board.h tests/type_widths.c
+
+C_STD := -std=c23 -pedantic-errors
+WARNINGS := -Wall -Wextra -Wpedantic -Werror -Wconversion -Wsign-conversion -Wshadow -Wstrict-prototypes \
+	-Wmissing-prototypes -Wundef -Wcast-qual -Wswitch-enum -Wswitch-default -Wdouble-promotion \
+	-Wnull-dereference -Wvla -Wredundant-decls -Wformat=2
+AVR_CFLAGS := -mmcu=$(MCU) -DF_CPU=$(F_CPU) $(C_STD) -Os -flto -ffat-lto-objects -Iinclude $(WARNINGS) \
+	-fno-common -ffunction-sections -fdata-sections
+AVR_ASFLAGS := -mmcu=$(MCU) -x assembler-with-cpp -Iinclude -Wall -Wextra -Werror
+AVR_LDFLAGS := -mmcu=$(MCU) -Os -flto -Wl,--gc-sections
+HOST_CFLAGS := $(C_STD) -Iinclude $(WARNINGS)
+SIM_CFLAGS := $(C_STD) -O2 $(WARNINGS) $(patsubst -I%,-isystem %,$(shell pkg-config --cflags simavr libelf))
+SIM_LIBS := $(shell pkg-config --libs simavr libelf)
+
+RELEASE_OBJECTS := $(patsubst src/%,$(RELEASE)/%.o,$(FIRMWARE_C) $(FIRMWARE_S))
+DEBUG_OBJECTS := $(patsubst src/%,$(DEBUG)/%.o,$(FIRMWARE_C) $(FIRMWARE_S))
+INSTRUCTIONS := $(RELEASE)/$(NAME).insn
+HOST_TEST := $(BUILD)/host/host_test
+SIM_TEST := $(BUILD)/sim/sim_test
+
+CPPCHECK_FLAGS := --std=c23 --platform=avr8 --enable=all --check-level=exhaustive --error-exitcode=1 \
+	--suppress=checkersReport '--suppress=*:$(AVR_INCLUDE)/*' -Iinclude -I$(AVR_INCLUDE) \
+	-D__AVR_ATtiny2313A__ -DF_CPU=$(F_CPU) -DFDSWU_DEBUG
+
+all: $(RELEASE_HEX) $(DEBUG_ELF)
+
+$(RELEASE)/%.c.o: src/%.c $(FIRMWARE_H)
+	@mkdir -p $(@D)
+	$(AVR_CC) $(AVR_CFLAGS) -c -o $@ $<
+
+$(DEBUG)/%.c.o: src/%.c $(FIRMWARE_H)
+	@mkdir -p $(@D)
+	$(AVR_CC) $(AVR_CFLAGS) -DFDSWU_DEBUG -c -o $@ $<
+
+$(RELEASE)/%.S.o: src/%.S include/port/registers.h
+	@mkdir -p $(@D)
+	$(AVR_CC) $(AVR_ASFLAGS) -c -o $@ $<
+
+$(DEBUG)/%.S.o: src/%.S include/port/registers.h
+	@mkdir -p $(@D)
+	$(AVR_CC) $(AVR_ASFLAGS) -c -o $@ $<
+
+$(RELEASE_ELF): $(RELEASE_OBJECTS)
+	$(AVR_CC) $(AVR_LDFLAGS) -o $@ $^
+
+$(DEBUG_ELF): $(DEBUG_OBJECTS)
+	$(AVR_CC) $(AVR_LDFLAGS) -o $@ $^
+
+$(RELEASE_HEX): $(RELEASE_ELF)
+	$(AVR_OBJCOPY) -O ihex -R .eeprom $< $@
+
+$(INSTRUCTIONS): $(RELEASE_ELF) tools/list_instructions.py
+	$(PYTHON) -m tools.list_instructions $(AVR_OBJDUMP) $(AVR_NM) $< $(RELEASE_OBJECTS) > $@
+
+$(HOST_TEST): $(LOGIC_C) $(HOST_TEST_C) $(FIRMWARE_H)
+	@mkdir -p $(@D)
+	$(HOST_CC) $(HOST_CFLAGS) -O0 -DFDSWU_DEBUG --coverage -o $@ $(LOGIC_C) $(HOST_TEST_C)
+
+$(SIM_TEST): $(SIM_TEST_C) tests/sim/board.h
+	@mkdir -p $(@D)
+	$(HOST_CC) $(SIM_CFLAGS) -o $@ $(SIM_TEST_C) $(SIM_LIBS)
+
+size: $(RELEASE_ELF)
+	$(AVR_SIZE) $<
+
+figures: $(RELEASE_ELF)
+	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $< --update
+
+analyse: $(RELEASE_ELF) $(DEBUG_ELF)
+	clang-format --dry-run --Werror $(C_FILES)
+	ruff check
+	ruff format --check
+	$(PYTHON) -m tools.style_gate $(FIRMWARE_C) $(FIRMWARE_S) $(FIRMWARE_H)
+	$(PYTHON) -m tools.layer_check .
+	$(AVR_CC) -mmcu=$(MCU) $(C_STD) -fsyntax-only tests/type_widths.c
+	$(HOST_CC) $(C_STD) -fsyntax-only tests/type_widths.c
+	cppcheck $(CPPCHECK_FLAGS) $(FIRMWARE_C)
+	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELF)
+	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage run -m unittest discover -s tests/tools -t .
+	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage report
+
+misra:
+	cppcheck $(CPPCHECK_FLAGS) --error-exitcode=0 --addon=misra $(FIRMWARE_C)
+
+hosttest: $(HOST_TEST)
+	rm -f $(BUILD)/host/*.gcda
+	$(HOST_TEST)
+	gcovr --root . --filter 'src/' --exclude-branches-by-pattern '.*FDSWU_ASSERT.*' \
+		--fail-under-line 100 --fail-under-branch 100 --print-summary $(BUILD)/host
+
+simtest: $(SIM_TEST) $(RELEASE_ELF) $(INSTRUCTIONS)
+	$(SIM_TEST) $(MCU) $(RELEASE_ELF) $(INSTRUCTIONS)
+
+test: hosttest simtest
+
+endif

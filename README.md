@@ -2,7 +2,7 @@
 
 ATtiny2313A firmware that sits on top of the Mitsumi FD3206P controller of a Famicom Disk System drive and does the controller's write stage itself, so the drive can rewrite whole disks with nothing cut and nothing else added.
 
-**TL;DR:** program an ATtiny2313A, place it on the FD3206P pin 1 over pin 1, solder its pins 4, 5, 6, 10, 13, 14, 15 and 20 to the pins underneath, and clip the rest. The firmware is 95 lines. It passes a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
+**TL;DR:** program an ATtiny2313A, place it on the FD3206P pin 1 over pin 1, solder its pins 4, 5, 6, 10, 13, 14, 15 and 20 to the pins underneath, and clip the rest. The firmware is written in C23 under the NASA Power of 10 rules and builds in a pinned Docker toolchain. It passes host unit tests at 100 percent line and branch coverage and a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
 
 ## Why a drive refuses full-disk writes
 
@@ -46,36 +46,54 @@ On single-file saves the FD3206P still writes, on the same two pins, driven from
 | 20 | +5 V | solder |
 | 1, 2, 3, 7, 8, 9, 11, 12, 16, 17, 18, 19 | unknown | clip so they touch nothing |
 
-The ATtiny4313 has the same pinout and runs the same firmware. Install details are in [`docs/hardware.md`](docs/hardware.md).
+The ATtiny4313 has the same pinout and runs the same firmware. Install details are in [`docs/hardware.md`](docs/hardware.md). Read the drive's power board label first: FMD-POWER-04 and -05 boards have a write lockout of their own that no chip on the FD3206P can remove.
 
-## Program with the Arduino IDE
+## Figures
 
-1. Load the ArduinoISP example onto an Arduino Uno or Nano and wire it to the ATtiny2313A as an ISP programmer.
-2. In the Arduino IDE preferences, add `http://drazzy.com/package_drazzy.com_index.json` to Additional Boards Manager URLs, then install ATTinyCore from the Boards Manager.
-3. Open the `fdswriteunlock` folder of this repository as a sketch.
-4. Under Tools, select the board `ATtiny4313/2313 (No Bootloader)`, chip `ATtiny2313/ATtiny2313A`, clock `8 MHz (internal)` and `B.O.D. Enabled (4.3v)`. Set Programmer to `Arduino as ISP`.
-5. Run Tools, Burn Bootloader once. The part has no bootloader, so this only writes the clock and brown-out fuses.
-6. Run Sketch, Upload Using Programmer.
+<!-- figures:begin -->
+| Figure | Value |
+|---|---|
+| Flash used | 212 bytes |
+| Edge handler | 15 instructions |
+| Firmware source | 154 non-blank lines |
+<!-- figures:end -->
 
-The sketch file is empty on purpose: the firmware defines its own `main`, so the Arduino core's `setup` and `loop` are never linked. This route follows ATTinyCore's board definitions but has not yet been test-built here with arduino-cli.
+`make analyse` fails when this table no longer matches the build; `make figures` rewrites it.
 
-## Program from the command line
+## Build
+
+The only requirement on the host is Docker and Python 3. Every build, check and test runs inside a toolchain image pinned by digest: avr-gcc 14.2, avr-libc 2.2.1, simavr 1.6, cppcheck 2.22, clang-format 19. The image tag is a hash of [`Dockerfile`](Dockerfile) and [`docker/requirements-tools.txt`](docker/requirements-tools.txt), so a changed toolchain builds a new image.
 
 ```sh
-make
+make            # release hex and debug ELF
+make analyse    # format, lint, style gate, layer check, type widths, cppcheck, figures, tool tests
+make test       # host unit tests with coverage, then the simavr suite
+make misra      # advisory MISRA C report
+make hooks      # run analyse and test before every commit
+```
+
+## Program
+
+Programming runs on the host with `avrdude`, installed with `brew install avrdude` on macOS or `apt install avrdude` on Debian.
+
+```sh
 make fuses PROGRAMMER=usbasp
 make flash PROGRAMMER=usbasp
 ```
 
-For an Arduino running ArduinoISP, pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`. The fuses are low `0xE4`, 8 MHz internal oscillator with no clock output, and high `0xD9`, brown-out reset at 4.3 V with programming left enabled. A new chip runs its 4 MHz oscillator divided by 8; the firmware sets the prescaler to 1 at start-up, so an unfused chip still works at 4 MHz, with twice the edge variation and no brown-out protection.
+To use an Arduino Uno or Nano as the programmer, load the ArduinoISP example onto it from the Arduino IDE, wire it to the ATtiny2313A, and pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`. The Arduino IDE only programs the Arduino; the ATtiny firmware is never built there, because the AVR compiler the IDE ships predates C23.
+
+The fuses are low `0xE4`, 8 MHz internal oscillator with no clock output, and high `0xD9`, brown-out reset at 4.3 V with programming left enabled. A new chip runs its 4 MHz oscillator divided by 8; the firmware sets the prescaler to 1 at start-up, so an unfused chip still works at 4 MHz, with twice the edge variation and no brown-out protection.
 
 ## Tests
 
-```sh
-make test
-```
+Three tiers, all run by `make test` and `make analyse`:
 
-The suite runs the real firmware in simavr and fails if any firmware instruction never executes. It needs `avr-gcc`, `avr-libc`, `libsimavr`, `libelf` and Python 3.
+| Tier | What it runs | Gate |
+|---|---|---|
+| Host | [`tests/host/host_test.c`](tests/host/host_test.c) against the pure logic in `src/heads.c` and `src/conditions.c`, with assertions on | 100 percent line and branch coverage |
+| Simulation | [`tests/sim/sim_test.c`](tests/sim/sim_test.c) runs the release ELF in simavr | 13 scenarios, every firmware instruction executed |
+| Tools | [`tests/tools/`](tests/tools) against the Python gates | 100 percent line and branch coverage |
 
 ## Provenance
 

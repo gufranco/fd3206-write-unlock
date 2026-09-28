@@ -11,7 +11,8 @@ Only public documentation informed this code:
 | nesdev wiki, "FDS RAM adaptor cable pinout" and "FDS disk format" | Signal names and polarities, gap lengths |
 | Microchip document 8246, ATtiny2313A/4313 | Pinout, timer, interrupts, supply range, pin current |
 | avrdude 8 part database | Fuse bit meanings and factory values |
-| ATTinyCore board definitions | Arduino IDE menu names for the ATtiny2313A |
+| Famicom World, "FDS Power Board Modifications" | Which power board revisions carry their own write lockout, for the hardware guide |
+| FDSStick and ToToTEK product pages for the FD3206 V4 add-on chip | Install photo showing eight soldered pins and a pin 1 to pin 19 jumper, for the comparison in the hardware guide only |
 
 ## Prior art not copied
 

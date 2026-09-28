@@ -23,6 +23,24 @@ Use a disk you do not care about.
 2. Rewrite a whole disk with a disk-writing tool, then read it back several times.
 3. With a logic analyzer, compare WRITE DATA on pin 6 with pins 14 and 15. Each falling edge moves the low level from one pin to the other.
 
+## Check the power board first
+
+The FD3206P is not the only write lockout in some drives. The Famicom World article "FDS Power Board Modifications" reports that later power boards carry their own copy-protection circuit, which blocks rewriting even on drives with the unprotected FD7201P:
+
+| Power board label | Needs a change |
+|---|---|
+| FMD-POWER-01 | no |
+| FMD-POWER-02 | only units fitted with a protection daughterboard, which is removed |
+| FMD-POWER-03 | not documented |
+| FMD-POWER-04 | yes: remove JP14 and link points A and B with a wire |
+| FMD-POWER-05 | yes: remove two jumper wires, cut two traces and add two wire links |
+
+Read the label on the power board before installing. On FMD-POWER-04 and -05 the ATtiny alone cannot make whole-disk writes work, and the change above is a board modification this project does not make. Commercial FD3206 modchips carry the same instruction.
+
+## Compared with the GAL modchips
+
+The GAL16V8 modchips, including the commercial "V4" sold with its markings removed, lift pin 1 and pin 19 and join them with a short wire. In registered mode a GAL clocks its flip-flop only from pin 1, on a rising edge, while the drive toggles on the falling edge of WRITE DATA; so the GAL inverts WRITE DATA onto output pin 19 and loops it back into its own clock pin. Neither pin is a reset. The ATtiny needs no loop: INT0 on pin 6 is set to trigger on the falling edge directly, and pins 1 and 19 are clipped. Both designs solder the same eight pins.
+
 ## FD7201P drives
 
 Drives with the earlier FD7201P controller have no write lockout and need none of this.

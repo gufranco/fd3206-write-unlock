@@ -1,0 +1,12 @@
+#ifndef FDSWU_PORT_REGISTERS_H
+#define FDSWU_PORT_REGISTERS_H
+
+#include <avr/io.h>
+
+#define FDSWU_NEXT_EDGE_HEADS  GPIOR0
+#define FDSWU_LATER_EDGE_HEADS GPIOR1
+#define FDSWU_TOGGLE_STATE     GPIOR2
+#define FDSWU_TOGGLE_BIT       0
+#define FDSWU_HEAD_DIRECTION   DDRB
+
+#endif

@@ -2,11 +2,25 @@
 
 ATtiny2313A firmware that sits on top of the Mitsumi FD3206P controller of a Famicom Disk System drive and does the controller's write stage itself, so the drive can rewrite whole disks with nothing cut and nothing else added.
 
-**TL;DR:** program an ATtiny2313A, place it on the FD3206P pin 1 over pin 1, solder its pins 4, 5, 6, 10, 13, 14, 15 and 20 to the pins underneath, and clip the rest. The firmware is written in C23 under the NASA Power of 10 rules and builds in a pinned Docker toolchain. It passes host unit tests at 100 percent line and branch coverage and a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
+**TL;DR:** program an ATtiny2313A, place it on the FD3206P pin 1 over pin 1, solder its pins 4, 5, 6, 10, 13, 14, 15 and 20 to the pins underneath, and clip the rest. Depending on the drive's power board, that board needs its own modification too; see [Power board](#power-board). The firmware is written in C23 under the NASA Power of 10 rules and builds in a pinned Docker toolchain. It passes host unit tests at 100 percent line and branch coverage and a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
 
 ## Why a drive refuses full-disk writes
 
 Drives built from late 1988 use the FD3206P controller in place of the earlier FD7201P. The FD3206P lets the RAM adapter rewrite a single file but releases the write heads when it sees a write of the whole disk surface, and the RAM adapter reports error 26. FD7201P drives do not do this and do not need this firmware.
+
+## Power board
+
+The chip is not always enough. The drive unit's second circuit board, the power board, carries the RAM adapter's signals to the drive mechanism, and revisions FMD-POWER-04 and -05, plus some -02 boards fitted with a green daughterboard, have a write lockout of their own. It blocks rewriting even on FD7201P drives, and no chip on the FD3206P can reach it.
+
+| Power board label | Change needed |
+|---|---|
+| FMD-POWER-01 | none |
+| FMD-POWER-02 | none, unless a green daughterboard is fitted: remove it and move its drive connector to the board |
+| FMD-POWER-03 | not documented; presumed like -02 |
+| FMD-POWER-04 | remove JP14 and join points A and B with a wire |
+| FMD-POWER-05 | remove two jumper wires, cut two traces and add two wire links |
+
+Read the `FMD-POWER-XX` label before installing the chip. The steps are in [`docs/hardware.md`](docs/hardware.md); the photos marking each point are in the Famicom World article [FDS Power Board Modifications](https://famicomworld.com/workshop/tech/fds-power-board-modifications/). The no-cut rule of this project covers the drive mechanism; the power board change is a prerequisite outside it.
 
 ## What the firmware does
 
@@ -46,7 +60,7 @@ On single-file saves the FD3206P still writes, on the same two pins, driven from
 | 20 | +5 V | solder |
 | 1, 2, 3, 7, 8, 9, 11, 12, 16, 17, 18, 19 | unknown | clip so they touch nothing |
 
-The ATtiny4313 has the same pinout and runs the same firmware. Install details are in [`docs/hardware.md`](docs/hardware.md). Read the drive's power board label first: FMD-POWER-04 and -05 boards have a write lockout of their own that no chip on the FD3206P can remove.
+The ATtiny4313 has the same pinout and runs the same firmware. Install details are in [`docs/hardware.md`](docs/hardware.md). Check the power board first; see [Power board](#power-board).
 
 ## Figures
 

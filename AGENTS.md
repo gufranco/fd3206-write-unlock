@@ -8,7 +8,7 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 
 ## Hard rules
 
-1. **Piggyback only.** The ATtiny sits on the FD3206P pin 1 over pin 1. Nothing on the drive board is cut and no other part is added: no resistor, diode, transistor, wire or capacitor. A change that needs any of them is out of scope, however much it would improve something.
+1. **Piggyback only.** The ATtiny sits on the FD3206P pin 1 over pin 1. Nothing on the drive board is cut and no other part is added: no resistor, diode, transistor, wire or capacitor. A change that needs any of them is out of scope, however much it would improve something. The rule covers the drive mechanism board. The power board's own write lockout, on FMD-POWER-04, -05 and some -02 boards, is a separate prerequisite that the docs describe and the firmware cannot remove.
 2. **ATtiny2313A or ATtiny4313 only.** The FD3206P pin map fixes which ATtiny pin meets which signal, and only the x313 puts GND, VCC, INT0 and a port pin on every signal pin at once. The 8-pin parts have five usable I/O and the design needs six; the sixth would be RESET, which would end in-system programming. Do not propose them again without a new pin argument.
 3. **The logic is the classic write stage, nothing more.** One flip-flop state changed by each falling edge of WRITE DATA, one head driven per state, both heads released unless /READY, /WRITE PROTECT and /WRITE GATE are all low. No detection, no heuristics, no state machine layered on top. An earlier revision watched the FD3206P and stepped aside when it wrote; it was removed because every guess is a new way to fail.
 4. **Protection is allowed only when it is nearly free.** The watchdog, the brown-out fuse, pull-low outputs and debug-only assertions stay because each costs a few lines or nothing in the release image. Anything else needs a measured reason recorded here first.
@@ -163,7 +163,7 @@ Nothing in this repository can drive a drive or a programmer, so a hardware resu
 | Are the FD3206P head outputs open collector | the piggyback design assumes it and no document states it |
 | Does a whole-disk write read back | the 2C33's decoding margin is not modelled |
 | What the edge-to-head delay really is | simavr enters the interrupt without the input synchroniser delay |
-| Does the drive's power board also block writes | FMD-POWER-04 and -05 boards carry their own write lockout, outside the FD3206P; see [`docs/hardware.md`](docs/hardware.md) |
+| Does the drive's power board also block writes | FMD-POWER-04, -05 and some -02 boards carry their own write lockout, outside the FD3206P; see [`docs/hardware.md`](docs/hardware.md) |
 
 ## Emulators
 

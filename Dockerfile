@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
 FROM debian:trixie@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c
 
 ARG CPPCHECK_VERSION=2.22.0
@@ -22,6 +25,7 @@ RUN apt-get update \
       python3-pip \
       curl \
       ca-certificates \
+      git \
  && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL -o /tmp/cppcheck.tar.gz "https://github.com/danmar/cppcheck/archive/refs/tags/${CPPCHECK_VERSION}.tar.gz" \

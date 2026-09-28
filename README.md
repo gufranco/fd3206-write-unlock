@@ -338,7 +338,7 @@ The Twin Famicom uses the same Mitsumi drive mechanism, so an FD3206P unit takes
 
 ## Versioning
 
-Releases follow [Semantic Versioning](https://semver.org/) and are cut automatically from `main` after the pipeline passes. Every [release](https://github.com/gufranco/fdswriteunlock/releases) carries its notes, the firmware hex and its SHA-256, and the hex carries a signed build-provenance attestation:
+Releases follow [Semantic Versioning](https://semver.org/) and are cut automatically from `main` after the pipeline passes. Every [release](https://github.com/gufranco/fdswriteunlock/releases) carries its notes, the firmware hex, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX software bill of materials attested to the same hex. Provenance comes from GitHub-hosted runners through the release workflow, which meets SLSA Build Level 2. Verify a download with:
 
 ```sh
 gh attestation verify fdswriteunlock.hex --repo gufranco/fdswriteunlock

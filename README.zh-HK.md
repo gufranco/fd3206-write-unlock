@@ -339,7 +339,7 @@ Twin Famicom 使用相同的三美驅動機構，因此配備 FD3206P 的機器�
 
 ## 版本管理
 
-發佈版本遵循[語義化版本](https://semver.org/)，在流水線通過後由 `main` 自動產生。每個[發佈版本](https://github.com/gufranco/fdswriteunlock/releases)都附有發佈說明、韌體 hex 及其 SHA-256，hex 亦附有經簽署的建置來源證明：
+發佈版本遵循[語義化版本](https://semver.org/)，在流水線通過後由 `main` 自動產生。每個[發佈版本](https://github.com/gufranco/fdswriteunlock/releases)都附有發佈說明、韌體 hex、其 SHA-256、已簽署建置來源的 Sigstore 證明包，以及與同一 hex 綁定證明的 SPDX 軟件物料清單。來源證明由發佈工作流程在 GitHub 託管的執行器上產生，符合 SLSA Build Level 2。下載後可用以下指令核對：
 
 ```sh
 gh attestation verify fdswriteunlock.hex --repo gufranco/fdswriteunlock

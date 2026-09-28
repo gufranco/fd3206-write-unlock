@@ -339,7 +339,7 @@ avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i
 
 ## バージョン管理
 
-リリースは [Semantic Versioning](https://semver.org/) に従い、パイプラインが通った後に `main` から自動で作られます。各[リリース](https://github.com/gufranco/fdswriteunlock/releases)にはリリースノート、ファームウェアの hex とその SHA-256 が付き、hex には署名付きのビルド来歴の証明が付きます。
+リリースは [Semantic Versioning](https://semver.org/) に従い、パイプラインが通った後に `main` から自動で作られます。各[リリース](https://github.com/gufranco/fdswriteunlock/releases)にはリリースノート、ファームウェアの hex、その SHA-256、署名付きビルド来歴の Sigstore バンドル、同じ hex に証明を結び付けた SPDX 形式のソフトウェア部品表が付きます。来歴は GitHub ホストのランナー上でリリース用ワークフローが作成し、SLSA Build Level 2 を満たします。ダウンロードしたファイルは次のコマンドで検証できます。
 
 ```sh
 gh attestation verify fdswriteunlock.hex --repo gufranco/fdswriteunlock

@@ -10,7 +10,7 @@ Report it privately through [GitHub private vulnerability reporting](https://git
 
 ## Verifying a release
 
-Each release attaches `fdswriteunlock.hex`, its SHA-256 and a signed build-provenance attestation. Before flashing a chip, check both:
+Each release attaches `fdswriteunlock.hex`, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to the same hex. Before flashing a chip, check the checksum and the provenance:
 
 ```sh
 sha256sum -c fdswriteunlock.hex.sha256

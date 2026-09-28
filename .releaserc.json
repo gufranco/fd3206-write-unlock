@@ -89,6 +89,14 @@
           {
             "path": "dist/fdswriteunlock.hex.sha256",
             "label": "SHA-256 of the firmware"
+          },
+          {
+            "path": "dist/fdswriteunlock.hex.sigstore.json",
+            "label": "Signed build provenance of the firmware, Sigstore bundle"
+          },
+          {
+            "path": "dist/fdswriteunlock.spdx.json",
+            "label": "Software bill of materials, SPDX JSON"
           }
         ],
         "successComment": false,

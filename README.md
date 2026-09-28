@@ -86,6 +86,8 @@ Wire colours are not guaranteed to match on every unit; trace both wires to the 
 
 ## Step 3: program the chip
 
+Every GitHub release attaches `fdswriteunlock.hex`, the exact image the pipeline built and tested, with its SHA-256. Check it with `sha256sum -c fdswriteunlock.hex.sha256`, write the fuses with `make fuses` and flash it with `avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i`, or build the same image yourself as below.
+
 Every build runs in Docker, so the host needs only Docker and Python 3. Programming runs on the host with `avrdude`, installed with `brew install avrdude` on macOS or `apt install avrdude` on Debian.
 
 ```sh

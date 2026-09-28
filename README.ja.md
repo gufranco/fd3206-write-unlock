@@ -86,6 +86,8 @@ Famicom World の記事 [FDS Power Board Modifications](https://famicomworld.com
 
 ## 手順 3: チップに書き込む
 
+GitHub の各リリースには、パイプラインがビルドしてテストしたイメージそのものである `fdswriteunlock.hex` と、その SHA-256 が添付されています。`sha256sum -c fdswriteunlock.hex.sha256` で確認してから`make fuses` でヒューズを書き、`avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i` で書き込むか、下記のとおり同じイメージを自分でビルドしてください。
+
 ビルドはすべて Docker 内で行うため、ホストに必要なのは Docker と Python 3 だけです。書き込みはホスト上の `avrdude` で行います。macOS では `brew install avrdude`、Debian では `apt install avrdude` でインストールします。
 
 ```sh

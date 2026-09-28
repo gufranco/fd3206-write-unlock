@@ -133,6 +133,10 @@ make flash      program the chip from the host
 make clean      remove build output
 ```
 
+## Releases
+
+semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, attaches the `fdswriteunlock.hex` artifact that same CI run built and tested plus its SHA-256, and never rebuilds. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
+
 ## Measuring a change
 
 - **A refactor changes nothing, and the hex proves it.** Compare the SHA-256 of `build/release/fdswriteunlock.hex` before and after. Equal digests end the review; different ones mean the change is not a pure refactor and `make test` decides.

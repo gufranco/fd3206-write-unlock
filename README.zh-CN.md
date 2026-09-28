@@ -86,6 +86,8 @@ Twin Famicom 使用相同的三美驱动机构，搭载 FD7201P 或 FD3206P，�
 
 ## 第 3 步：烧录芯片
 
+每个 GitHub 发布版本都附有 `fdswriteunlock.hex`，即流水线构建并测试过的同一映像，以及它的 SHA-256。先用 `sha256sum -c fdswriteunlock.hex.sha256` 校验，再用 `make fuses` 写入熔丝，并用 `avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i` 烧录；也可以按下文自行构建同一映像。
+
 所有构建都在 Docker 中进行，主机只需要 Docker 和 Python 3。烧录在主机上用 `avrdude` 完成，macOS 上用 `brew install avrdude` 安装，Debian 上用 `apt install avrdude` 安装。
 
 ```sh

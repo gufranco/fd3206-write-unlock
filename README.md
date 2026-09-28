@@ -6,7 +6,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
 
 <br>
 
-<strong>One ATtiny2313A soldered on top of the FD3206P, and a Famicom Disk System drive rewrites whole disks again.</strong>
+<strong>One ATtiny2313A soldered on top of the FD3206 controller, and a Famicom Disk System drive rewrites whole disks again.</strong>
 
 <br>
 <br>

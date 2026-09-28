@@ -6,7 +6,7 @@
 
 <br>
 
-<strong>在 FD3206P 上方焊一粒 ATtiny2313A，Famicom 磁碟機的驅動器便可以重新改寫整張磁碟。</strong>
+<strong>在 FD3206 控制器上方焊一粒 ATtiny2313A，Famicom 磁碟機的驅動器便可以重新改寫整張磁碟。</strong>
 
 <br>
 <br>

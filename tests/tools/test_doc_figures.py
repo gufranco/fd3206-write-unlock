@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
 import io
 import sys
 import tempfile
@@ -6,6 +9,8 @@ import unittest.mock
 from pathlib import Path
 
 from tools import doc_figures
+
+LICENSE_TAG = "SPDX-" + "License-Identifier"
 
 SIZE_OUTPUT = """firmware.elf  :
 section           size      addr
@@ -70,6 +75,15 @@ class ParseTest(unittest.TestCase):
         lines = doc_figures.source_lines(root)
 
         self.assertEqual(lines, 6)
+
+    def test_source_lines_skip_licence_headers(self) -> None:
+        root = make_root()
+        header = f"/* {LICENSE_TAG}: MIT */\n"
+        (root / "src" / "c.c").write_text(header + "\ncode();\n")
+
+        lines = doc_figures.source_lines(root)
+
+        self.assertEqual(lines, 7)
 
 
 class RunTest(unittest.TestCase):

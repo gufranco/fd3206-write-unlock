@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com> */
+/* SPDX-License-Identifier: MIT */
+
 #ifndef FDSWRITEUNLOCK_TEST_BOARD_H
 #define FDSWRITEUNLOCK_TEST_BOARD_H
 

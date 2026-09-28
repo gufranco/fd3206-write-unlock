@@ -1,0 +1,19 @@
+version = 1
+
+[[annotations]]
+path = [
+    "README.md",
+    "README.ja.md",
+    "README.zh-CN.md",
+    "README.zh-HK.md",
+    "SECURITY.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "package.json",
+    "pnpm-lock.yaml",
+    ".releaserc.json",
+    ".tool-versions",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Gustavo Franco <gufranco@users.noreply.github.com>"
+SPDX-License-Identifier = "MIT"

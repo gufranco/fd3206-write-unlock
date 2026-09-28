@@ -26,6 +26,7 @@ RUN apt-get update \
       curl \
       ca-certificates \
       git \
+      libmagic1 \
  && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL -o /tmp/cppcheck.tar.gz "https://github.com/danmar/cppcheck/archive/refs/tags/${CPPCHECK_VERSION}.tar.gz" \

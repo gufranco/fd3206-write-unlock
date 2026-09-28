@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
 import re
 import subprocess
 import sys
@@ -10,6 +13,7 @@ BEGIN = "<!-- figures:begin -->"
 END = "<!-- figures:end -->"
 UPDATE_FLAG = "--update"
 FLASH_SECTIONS = frozenset({".text", ".data"})
+LICENCE_HEADER = re.compile(r"^\s*(?:/\*|#) SPDX-")
 SECTION_ROW = re.compile(r"^(\.\w+)\s+(\d+)\s+\d+$")
 SOURCE_GLOBS = ("src/*.c", "src/*.S", "include/**/*.h")
 HANDLER_SYMBOL = "__vector_1"
@@ -82,7 +86,10 @@ def handler_instructions(objdump_output: str, symbol: str) -> int:
 def source_lines(root: Path) -> int:
     files = sorted({path for pattern in SOURCE_GLOBS for path in root.glob(pattern)})
     return sum(
-        1 for path in files for line in path.read_text().splitlines() if line.strip()
+        1
+        for path in files
+        for line in path.read_text().splitlines()
+        if line.strip() and not LICENCE_HEADER.match(line)
     )
 
 

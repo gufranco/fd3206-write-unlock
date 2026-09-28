@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
 MCU := attiny2313a
 AVRDUDE_PART := t2313a
 F_CPU := 8000000UL
@@ -132,6 +135,7 @@ analyse: $(RELEASE_HEX) $(DEBUG_ELF)
 	ruff format --check
 	$(PYTHON) -m tools.style_gate $(FIRMWARE_C) $(FIRMWARE_S) $(FIRMWARE_H)
 	$(PYTHON) -m tools.layer_check .
+	reuse lint
 	$(AVR_CC) -mmcu=$(MCU) $(C_STD) -fsyntax-only tests/type_widths.c
 	$(HOST_CC) $(C_STD) -fsyntax-only tests/type_widths.c
 	$(HOST_CC) $(SIM_CFLAGS) -fsigned-char -fsyntax-only $(SIM_TEST_C)

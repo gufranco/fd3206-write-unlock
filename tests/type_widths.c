@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com> */
+/* SPDX-License-Identifier: MIT */
+
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>

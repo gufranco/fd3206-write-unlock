@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
 import io
 import tempfile
 import unittest
@@ -5,6 +8,9 @@ import unittest.mock
 from pathlib import Path
 
 from tools import style_gate
+
+COPYRIGHT_TAG = "SPDX-" + "FileCopyrightText"
+LICENSE_TAG = "SPDX-" + "License-Identifier"
 
 CLEAN_SOURCE = """#include <stdint.h>
 
@@ -25,6 +31,21 @@ def findings_for(name: str, text: str) -> list[str]:
 
 
 class CommentTest(unittest.TestCase):
+    def test_spdx_header_is_the_one_allowed_comment(self) -> None:
+        header = (
+            f"/* {COPYRIGHT_TAG}: 2026 A Person <a@example.invalid> */\n"
+            f"/* {LICENSE_TAG}: MIT */\n"
+        )
+
+        rules = findings_for("a.c", header) + findings_for("a.S", header)
+
+        self.assertEqual(rules, [])
+
+    def test_spdx_text_inside_a_prose_comment_is_reported(self) -> None:
+        rules = findings_for("a.c", f"/* note: {LICENSE_TAG}: MIT here */\n")
+
+        self.assertIn("comment", rules)
+
     def test_line_comment_is_reported(self) -> None:
         rules = findings_for("a.c", "void f(void) {\n    g(); // why\n}\n")
 

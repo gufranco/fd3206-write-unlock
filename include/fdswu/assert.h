@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com> */
+/* SPDX-License-Identifier: MIT */
+
 #ifndef FDSWU_ASSERT_H
 #define FDSWU_ASSERT_H
 

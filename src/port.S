@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com> */
+/* SPDX-License-Identifier: MIT */
+
 #include "port/registers.h"
 
 #if FDSWU_TOGGLE_BIT != 0

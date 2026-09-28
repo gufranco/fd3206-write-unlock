@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
 build/
 .DS_Store
 __pycache__/
@@ -5,3 +8,4 @@ docs/
 specs/
 node_modules/
 dist/
+.vscode/

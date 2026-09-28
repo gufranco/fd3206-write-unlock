@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
 import re
 import sys
 from dataclasses import dataclass
@@ -6,6 +9,9 @@ from pathlib import Path
 LITERAL = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"")
 C_COMMENT = re.compile(r"//|/\*")
 ASSEMBLY_COMMENT = re.compile(r";|//|/\*")
+SPDX_HEADER = re.compile(
+    r"^/\* SPDX-(?:FileCopyrightText|License-Identifier): [^*]+ \*/$"
+)
 PLATFORM_WIDTH_TYPE = re.compile(r"\b(char|short|long|unsigned|signed|float|double)\b")
 INT_TYPE = re.compile(r"\bint\b")
 MAIN_DEFINITION = re.compile(r"^int main\(void\)")
@@ -38,7 +44,7 @@ def strip_literals(line: str) -> str:
 
 def line_findings(path: Path, number: int, code: str) -> list[Finding]:
     checks = [
-        ("comment", C_COMMENT.search(code)),
+        ("comment", C_COMMENT.search(code) and not SPDX_HEADER.match(code)),
         (
             "type",
             PLATFORM_WIDTH_TYPE.search(code)
@@ -91,7 +97,7 @@ def check_assembly(path: Path, lines: list[str]) -> list[Finding]:
     return [
         Finding(path, number, "comment", line.strip())
         for number, line in enumerate(lines, start=1)
-        if ASSEMBLY_COMMENT.search(line)
+        if ASSEMBLY_COMMENT.search(line) and not SPDX_HEADER.match(line.strip())
     ]
 
 

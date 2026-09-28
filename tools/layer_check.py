@@ -1,5 +1,6 @@
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,7 +9,7 @@ STANDARD_HEADERS = frozenset({"stdint.h", "stddef.h", "stdbool.h"})
 LOGIC_PREFIX = "fdswu/"
 PORT_PREFIX = "port/"
 HARDWARE_PREFIXES = ("avr/", "util/", PORT_PREFIX)
-PLATFORM_SOURCES = frozenset({"main.c", "assert.c"})
+PLATFORM_SOURCES = frozenset({"main.c"})
 ASSEMBLY_SUFFIX = ".S"
 SOURCE_SUFFIX = ".c"
 
@@ -29,20 +30,26 @@ def logic_allows(included: str) -> bool:
     return included in STANDARD_HEADERS or included.startswith(LOGIC_PREFIX)
 
 
-def platform_allows(included: str) -> bool:
+def platform_c_allows(included: str) -> bool:
+    return logic_allows(included) or included.startswith(PORT_PREFIX)
+
+
+def hardware_allows(included: str) -> bool:
     return logic_allows(included) or included.startswith(HARDWARE_PREFIXES)
 
 
-def is_platform(path: Path) -> bool:
-    return (
-        path.name in PLATFORM_SOURCES
-        or path.suffix == ASSEMBLY_SUFFIX
-        or PORT_PREFIX.rstrip("/") in path.parts
-    )
+def is_hardware(path: Path) -> bool:
+    return path.suffix == ASSEMBLY_SUFFIX or PORT_PREFIX.rstrip("/") in path.parts
+
+
+def rule_for(path: Path) -> Callable[[str], bool]:
+    if is_hardware(path):
+        return hardware_allows
+    return platform_c_allows if path.name in PLATFORM_SOURCES else logic_allows
 
 
 def check(path: Path) -> list[Violation]:
-    allows = platform_allows if is_platform(path) else logic_allows
+    allows = rule_for(path)
     found = [
         Violation(path, name, "source file included")
         for name in includes(path)

@@ -1,3 +1,5 @@
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,7 +8,7 @@
 #include "fdswu/heads.h"
 #include "fdswu/pins.h"
 
-static constexpr uint16_t PORT_VALUES = 256U;
+#define PORT_VALUES ((uint16_t)256U)
 
 typedef struct {
     bool toggled;
@@ -43,9 +45,9 @@ static void plan_selects_one_head_per_toggle_state(void) {
 }
 
 static bool expected_allow(uint8_t port_a, uint8_t port_b) {
-    const bool gate_low = (port_a & 0b0000'0010U) == 0U;
-    const bool protect_low = (port_a & 0b0000'0001U) == 0U;
-    const bool ready_low = (port_b & 0b0000'0010U) == 0U;
+    const bool gate_low = (port_a & 0x02U) == 0U;
+    const bool protect_low = (port_a & 0x01U) == 0U;
+    const bool ready_low = (port_b & 0x02U) == 0U;
     return gate_low && protect_low && ready_low;
 }
 

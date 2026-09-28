@@ -20,9 +20,8 @@ CLEAN_TREE = {
     "include/fdswu/heads.h": "#include <stdint.h>\n",
     "include/port/registers.h": "#include <avr/io.h>\n",
     "src/heads.c": '#include "fdswu/heads.h"\n#include "fdswu/pins.h"\n',
-    "src/main.c": (
-        '#include <avr/io.h>\n#include "port/registers.h"\n#include "fdswu/heads.h"\n'
-    ),
+    "include/port/port.h": "#include <stdint.h>\n",
+    "src/main.c": '#include "port/port.h"\n#include "fdswu/heads.h"\n',
     "src/write_data_edge.S": '#include "port/registers.h"\n',
 }
 
@@ -59,6 +58,17 @@ class ViolationTest(unittest.TestCase):
         violations = layer_check.violations(root)
 
         self.assertEqual([v.included for v in violations], ["heads.c"])
+
+
+class PlatformCTest(unittest.TestCase):
+    def test_c_platform_source_including_avr_is_reported(self) -> None:
+        root = make_tree({**CLEAN_TREE, "src/main.c": "#include <avr/io.h>\n"})
+
+        violations = layer_check.violations(root)
+
+        self.assertEqual(
+            [(v.path.name, v.included) for v in violations], [("main.c", "avr/io.h")]
+        )
 
 
 class MainTest(unittest.TestCase):

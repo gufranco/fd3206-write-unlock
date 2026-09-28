@@ -4,7 +4,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
 
 ATtiny2313A firmware that sits on top of the Mitsumi FD3206P controller of a Famicom Disk System drive and does the controller's write stage itself, so the drive can rewrite whole disks with nothing cut on the drive mechanism and nothing else added.
 
-**TL;DR:** a drive can have two write lockouts. The FD3206P controller is fixed by this chip: program an ATtiny2313A, place it on the FD3206P pin 1 over pin 1, solder its pins 4, 5, 6, 10, 13, 14, 15 and 20 to the pins underneath, and clip the rest. The power board is fixed separately, and only on the revisions that have a lockout: FMD-POWER-04, -05, some -02 boards and the Sharp Twin Famicom AN-500. The firmware is C23 under the NASA Power of 10 rules, built in a pinned Docker toolchain, with 100 percent host line and branch coverage and a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
+**TL;DR:** a drive can have two write lockouts. The FD3206P controller is fixed by this chip: program an ATtiny2313A, place it on the FD3206P pin 1 over pin 1, solder its pins 4, 5, 6, 10, 13, 14, 15 and 20 to the pins underneath, and clip the rest. The power board is fixed separately, and only on the revisions that have a lockout: FMD-POWER-04, -05, some -02 boards and the Sharp Twin Famicom AN-500. The firmware is C17 with zero MISRA C:2012 deviations, follows the NASA Power of 10 rules, keeps every register access in one small assembly module, and is built in a pinned Docker toolchain, with 100 percent host line and branch coverage and a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
 
 ## Why a drive refuses full-disk writes
 
@@ -94,7 +94,7 @@ make fuses PROGRAMMER=usbasp
 make flash PROGRAMMER=usbasp
 ```
 
-To use an Arduino Uno or Nano as the programmer, load the ArduinoISP example onto it from the Arduino IDE, wire it to the ATtiny2313A, and pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`. The Arduino IDE only programs the Arduino; the ATtiny firmware is never built there, because the AVR compiler the IDE ships predates C23.
+To use an Arduino Uno or Nano as the programmer, load the ArduinoISP example onto it from the Arduino IDE, wire it to the ATtiny2313A, and pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`. The Arduino IDE only programs the Arduino; the ATtiny firmware is never built there, so every chip receives the image that passed the MISRA check, the tests and the simulation. Each release attaches that image, built by the release pipeline.
 
 The fuses are low `0xE4`, 8 MHz internal oscillator with no clock output, and high `0xD9`, brown-out reset at 4.3 V with programming left enabled. A new chip runs its 4 MHz oscillator divided by 8; the firmware sets the prescaler to 1 at start-up, so an unfused chip still works at 4 MHz, with twice the edge variation and no brown-out protection.
 
@@ -183,9 +183,9 @@ The ATtiny needs no loop: INT0 on pin 6 triggers on the falling edge directly, a
 <!-- figures:begin -->
 | Figure | Value |
 |---|---|
-| Flash used | 212 bytes |
+| Flash used | 226 bytes |
 | Edge handler | 15 instructions |
-| Firmware source | 154 non-blank lines |
+| Firmware source | 221 non-blank lines |
 <!-- figures:end -->
 
 Measured from the release build.

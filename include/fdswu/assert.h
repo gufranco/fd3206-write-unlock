@@ -1,7 +1,7 @@
 #ifndef FDSWU_ASSERT_H
 #define FDSWU_ASSERT_H
 
-[[noreturn]] void fdswu_assert_fail(void);
+void fdswu_assert_fail(void);
 
 #if defined(FDSWU_DEBUG)
 #define FDSWU_ASSERT(condition) ((condition) ? (void)0 : fdswu_assert_fail())

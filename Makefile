@@ -47,6 +47,7 @@ AVR_NM := avr-nm
 AVR_SIZE := avr-size
 HOST_CC := gcc
 AVR_INCLUDE := /usr/lib/avr/include
+AVR_GCC_INCLUDE := $(shell $(AVR_CC) -print-file-name=include)
 
 FIRMWARE_C := $(sort $(wildcard src/*.c))
 FIRMWARE_S := $(sort $(wildcard src/*.S))
@@ -56,7 +57,7 @@ HOST_TEST_C := tests/host/host_test.c tests/host/host_assert.c
 SIM_TEST_C := tests/sim/sim_test.c tests/sim/board.c
 C_FILES := $(FIRMWARE_C) $(FIRMWARE_H) $(HOST_TEST_C) $(SIM_TEST_C) tests/sim/board.h tests/type_widths.c
 
-C_STD := -std=c23 -pedantic-errors
+C_STD := -std=c17 -pedantic-errors
 WARNINGS := -Wall -Wextra -Wpedantic -Werror -Wconversion -Wsign-conversion -Wshadow -Wstrict-prototypes \
 	-Wmissing-prototypes -Wundef -Wcast-qual -Wswitch-enum -Wswitch-default -Wdouble-promotion \
 	-Wnull-dereference -Wvla -Wredundant-decls -Wformat=2
@@ -74,9 +75,11 @@ INSTRUCTIONS := $(RELEASE)/$(NAME).insn
 HOST_TEST := $(BUILD)/host/host_test
 SIM_TEST := $(BUILD)/sim/sim_test
 
-CPPCHECK_FLAGS := --std=c23 --platform=avr8 --enable=all --check-level=exhaustive --error-exitcode=1 \
-	--suppress=checkersReport '--suppress=*:$(AVR_INCLUDE)/*' -Iinclude -I$(AVR_INCLUDE) \
-	-D__AVR_ATtiny2313A__ -DF_CPU=$(F_CPU) -DFDSWU_DEBUG
+CPPCHECK_FLAGS := --std=c17 --platform=avr8 --enable=all --check-level=exhaustive --error-exitcode=1 \
+	--suppress=checkersReport '--suppress=*:$(AVR_INCLUDE)/*' '--suppress=*:$(AVR_GCC_INCLUDE)/*' \
+	-Iinclude -I$(AVR_INCLUDE) -I$(AVR_GCC_INCLUDE) \
+	-D__AVR_ATtiny2313A__ -DF_CPU=$(F_CPU)
+CPPCHECK_CONFIGS := -DFDSWU_DEBUG -UFDSWU_DEBUG
 
 all: $(RELEASE_HEX) $(DEBUG_ELF)
 
@@ -134,13 +137,13 @@ analyse: $(RELEASE_ELF) $(DEBUG_ELF)
 	$(HOST_CC) $(SIM_CFLAGS) -funsigned-char -fsyntax-only $(SIM_TEST_C)
 	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -fsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
 	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -funsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
-	cppcheck $(CPPCHECK_FLAGS) $(FIRMWARE_C)
+	$(foreach config,$(CPPCHECK_CONFIGS),cppcheck $(CPPCHECK_FLAGS) $(config) --addon=misra $(FIRMWARE_C) &&) true
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELF)
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage run -m unittest discover -s tests/tools -t .
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage report
 
 misra:
-	cppcheck $(CPPCHECK_FLAGS) --error-exitcode=0 --addon=misra $(FIRMWARE_C)
+	$(foreach config,$(CPPCHECK_CONFIGS),cppcheck $(CPPCHECK_FLAGS) $(config) --addon=misra $(FIRMWARE_C) &&) true
 
 hosttest: $(HOST_TEST)
 	rm -f $(BUILD)/host/*.gcda

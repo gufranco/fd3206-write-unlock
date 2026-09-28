@@ -14,12 +14,12 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 4. **Protection is allowed only when it is nearly free.** The watchdog, the brown-out fuse, pull-low outputs and debug-only assertions stay because each costs a few lines or nothing in the release image. Anything else needs a measured reason recorded here first.
 5. **A head pin pulls low or floats.** It is an output at 0 or an input, never an output at 1. The FD3206P shares pins 14 and 15, and a pin that never drives high cannot short against it.
 6. **Never drive a pin whose FD3206P function is unknown.** Only pins 4, 5, 6, 10, 13, 14, 15 and 20 are soldered. Every other pin is clipped, kept an input, and given its internal pull-up so it cannot float.
-7. **C23, built only in the pinned Docker toolchain.** Every compile, check and test runs in the image described by [`Dockerfile`](Dockerfile). The host needs Docker and Python 3; `make` delegates to the container. Programming with `avrdude` is the one step that runs on the host. The Arduino IDE ships avr-gcc 7.3, which has no C23, so it never builds the firmware.
+7. **C17 and MISRA C:2012 with zero deviations, built only in the pinned Docker toolchain.** C17 is the newest standard MISRA C:2012 and its amendments cover; C23 features, and the C11 features rule 1.4 calls emergent such as `_Noreturn`, are out. `make analyse` runs the cppcheck MISRA addon over the debug and the release configuration and fails on any finding; there is no deviation list. Every compile, check and test runs in the image described by [`Dockerfile`](Dockerfile). The host needs Docker and Python 3; `make` delegates to the container. Programming with `avrdude` is the one step that runs on the host. Released firmware is built by the release pipeline, never by an IDE.
 8. **NASA Power of 10, adapted below.** Every exception is listed in the table in this file; there are no others.
 9. **No comments in source files.** Names carry the meaning; explanation belongs here, in the READMEs, in the local `docs/` or in the commit message. [`tools/style_gate.py`](tools/style_gate.py) enforces it.
-10. **The library comes first.** `<avr/wdt.h>`, `<avr/power.h>` and `<avr/interrupt.h>` do their jobs; a hand-written equivalent is a defect.
+10. **Registers are touched only in assembly.** Every register access lives in [`src/port.S`](src/port.S) and the INT0 handler, behind the C prototypes in [`include/port/port.h`](include/port/port.h). No C file includes an `avr/` or `util/` header, because avr-libc reaches registers through integer-to-pointer casts that MISRA rule 11.4 forbids and through inline assembly the checker cannot see. The watchdog and clock-prescaler timed sequences in `port.S` follow the ATtiny2313A datasheet, Microchip document 8246, and are checked in simulation.
 11. **Scripts are Python 3.** Build tooling and checks are Python with 100 percent line and branch coverage; Make recipes call a Python module rather than growing shell logic. No bash, awk or perl.
-12. **READMEs are commercial and technical, never development.** The four READMEs are the single source for what the product is, how to install it and how it works, and they never link into `docs/`. Development material, including build internals, test tiers, MISRA deviations and ADRs, lives in `docs/` or `specs/`, which are gitignored and never pushed. A README change lands in all four languages in the same commit; `make analyse` checks that their figures blocks agree with the build.
+12. **READMEs are commercial and technical, never development.** The four READMEs are the single source for what the product is, how to install it and how it works, and they never link into `docs/`. Development material, including build internals, test tiers and ADRs, lives in `docs/` or `specs/`, which are gitignored and never pushed. A README change lands in all four languages in the same commit; `make analyse` checks that their figures blocks agree with the build.
 13. **`make analyse test` passes before any commit.** `make hooks` installs a pre-commit hook that runs both.
 
 ## Power of 10
@@ -30,12 +30,12 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 | 2. Every loop has a fixed bound | loops in firmware: two | `main` runs until power-off; `fdswu_assert_fail` halts forever with heads released and the watchdog off |
 | 3. No dynamic memory after start-up | no heap at all; the style gate rejects `malloc`, `calloc`, `realloc`, `free`, `alloca` | none |
 | 4. Functions fit on a page | the style gate fails any function over 60 lines | none |
-| 5. Two assertions per function | every function with logic carries two `FDSWU_ASSERT`; compiled in with `FDSWU_DEBUG` for the debug ELF and the host tests, out of the release image | `toggled` and `fdswu_conditions_allow` are single expressions, `main` is the loop itself, and `fdswu_assert_fail` is where assertions land |
+| 5. Two assertions per function | every C function with logic carries two `FDSWU_ASSERT`; compiled in with `FDSWU_DEBUG` for the debug ELF and the host tests, out of the release image | `fdswu_conditions_allow` is a single expression, `main` is the loop itself, and the assembly port functions are single register moves |
 | 6. Smallest scope for data | file-scope state is limited to the three GPIOR registers the edge handler shares | none |
-| 7. Check every return value and parameter | `[[nodiscard]]` on every function that returns a value | none |
-| 8. Limited preprocessor | `#define` only for include guards, the assertion macro and names the assembly shares; constants are `constexpr` | none |
-| 9. Restricted pointers | no pointers in firmware code; the style gate rejects function pointers | register access through avr-libc macros |
-| 10. All warnings on, static analysers clean | `-Wall -Wextra -Wpedantic -pedantic-errors -Werror` plus conversion, shadow and prototype warnings; cppcheck `--enable=all --check-level=exhaustive` | MISRA C:2012 deviations, recorded in the local `docs/misra.md` |
+| 7. Check every return value and parameter | MISRA rule 17.7, enforced by the MISRA gate, requires every returned value to be used | none |
+| 8. Limited preprocessor | `#define` only for include guards, the assertion macro, typed object-like constants such as `((uint8_t)0x08U)` checked by `_Static_assert`, and names the assembly shares | none |
+| 9. Restricted pointers | no pointers in C firmware code, not even through register macros; the style gate rejects function pointers | none |
+| 10. All warnings on, static analysers clean | `-Wall -Wextra -Wpedantic -pedantic-errors -Werror` plus conversion, shadow and prototype warnings; cppcheck `--enable=all --check-level=exhaustive` | none; MISRA C:2012 is a gate with zero findings |
 
 ## Types
 
@@ -59,9 +59,10 @@ Naming follows BARR-C: `fdswu_` prefix on every external symbol, `_t` suffix on 
 | Layer | Files | May include |
 |---|---|---|
 | Logic | `src/heads.c`, `src/conditions.c`, `include/fdswu/*.h` | `<stdint.h>`, `<stddef.h>`, `<stdbool.h>`, `fdswu/` |
-| Platform | `src/main.c`, `src/assert.c`, `src/write_data_edge.S`, `include/port/*.h` | the above plus `avr/`, `util/`, `port/` |
+| Platform C | `src/main.c` | the above plus `port/` |
+| Hardware | `src/port.S`, `src/write_data_edge.S`, `include/port/*.h` | the above plus `avr/`, `util/` |
 
-The logic layer compiles and runs on the host, which is how it reaches 100 percent line and branch coverage. [`tools/layer_check.py`](tools/layer_check.py) fails the build when a logic file reaches the hardware.
+The logic layer compiles and runs on the host, which is how it reaches 100 percent line and branch coverage. [`tools/layer_check.py`](tools/layer_check.py) fails the build when a logic file reaches the platform, or when any C file includes a hardware header.
 
 ## Pin map
 
@@ -104,15 +105,15 @@ A hardware fact enters the code only with a source beside it in this file or in 
 
 ```
 include/fdswu/       logic-layer headers: pins, heads plan, conditions, assertion
-include/port/        register names shared by C and assembly
-src/                 firmware: logic modules, main, assertion handler, INT0 handler
+include/port/        C prototypes of the port module, register names for the assembly
+src/                 firmware: logic modules, main loop, assembly port module, INT0 handler
 tests/host/          host unit tests of the logic layer
 tests/sim/           simavr harness and the 13 scenarios
 tests/tools/         unit tests of the Python tools
 tests/type_widths.c  compile-time record of type widths per compiler
 tools/               Python gates and helpers called by the Makefile
 docker/              pinned Python tool requirements for the image
-docs/                local only, gitignored: development guide, requirements spec, MISRA deviations, ADRs
+docs/                local only, gitignored: development guide, requirements spec, ADRs
 README*.md           commercial and technical description in English, Japanese, Simplified and Hong Kong Chinese
 build/               generated, never committed
 ```
@@ -122,9 +123,9 @@ build/               generated, never committed
 ```
 make            release hex and debug ELF, in Docker
 make size       firmware size
-make analyse    clang-format, ruff, style gate, layer check, type widths, cppcheck, README figures, tool tests
+make analyse    clang-format, ruff, style gate, layer check, type widths, cppcheck with MISRA, README figures, tool tests
 make test       host tests at 100 percent line and branch, then the simavr suite at 100 percent instructions
-make misra      advisory MISRA C:2012 report
+make misra      the MISRA C:2012 gate alone, also part of analyse
 make figures    rewrite the README figures block
 make hooks      run analyse and test before every commit
 make fuses      write lfuse 0xE4 and hfuse 0xD9 on the host, PROGRAMMER and PORT as needed
@@ -154,6 +155,8 @@ make clean      remove build output
 | The global gitignore ignores `*.patch`, which hid a file from a commit | `git status` did not list it | `git check-ignore -v` on any generated file before committing |
 | avr-ld keeps `.L` labels for relaxation, so objdump shows them as function headers; the coverage list stopped each function at its first local label and held 47 of 76 instructions | The suite still reported 0 instructions never executed | `.L` headers continue the enclosing function in `tools/list_instructions.py`, with a test |
 | The simavr ioctl macros build their code from a `char`; on x86_64 `char` is signed, so CI failed `-Wsign-conversion` while the aarch64 build was clean | The same image passed every gate on the Mac | `make analyse` compiles the harness and host tests with both `-fsigned-char` and `-funsigned-char` |
+| Moving register access behind assembly calls pushed the gate response past 10 us: three calls per main-loop pass plus the update | Every other scenario passed | the gate-response scenarios; the loop now makes one `fdswu_port_poll` call that services the watchdog and samples both ports |
+| `_Noreturn`, valid C11, still broke MISRA: rule 1.4 lists it as an emergent feature | It compiled cleanly under `-pedantic-errors` | the MISRA gate in `make analyse`, calibrated against a planted `goto` |
 | The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; hard rule 7 |
 
 ## Real hardware
@@ -176,4 +179,3 @@ simavr runs headless and opens nothing. Any other emulator used for a check runs
 
 - Nothing has run on a drive.
 - Whether single-file saves suffer from the FD3206P and the ATtiny writing the same heads out of phase is unknown. The classic GAL modchip has the same exposure.
-- The MISRA deviations recorded in the local `docs/misra.md` await the owner's approval.

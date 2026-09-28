@@ -4,7 +4,7 @@
 
 这是一款 ATtiny2313A 固件。芯片叠焊在 Famicom 磁碟机（Famicom Disk System）驱动器中三美（Mitsumi）FD3206P 控制器的上方，由它代替控制器完成写入级的工作，使驱动器可以改写整张磁盘，而驱动机构电路板上无需切断任何线路，也无需添加其他元件。
 
-**概要：** 驱动器最多可能有两处写入锁定。FD3206P 控制器这一处由本芯片解除：为 ATtiny2313A 烧录固件，将它 1 脚对 1 脚叠放在 FD3206P 上，把 ATtiny 的 4、5、6、10、13、14、15、20 脚焊到正下方的引脚上，其余引脚剪掉。电源板需要另行处理，且只针对带有锁定电路的版本：FMD-POWER-04、-05、部分 -02，以及夏普 Twin Famicom AN-500。固件采用遵循 NASA Power of 10 规则的 C23 编写，在版本固定的 Docker 工具链中构建；主机单元测试的行覆盖率与分支覆盖率均为 100%，13 个仿真场景执行了固件的每一条指令。目前尚未在真实驱动器上运行过。
+**概要：** 驱动器最多可能有两处写入锁定。FD3206P 控制器这一处由本芯片解除：为 ATtiny2313A 烧录固件，将它 1 脚对 1 脚叠放在 FD3206P 上，把 ATtiny 的 4、5、6、10、13、14、15、20 脚焊到正下方的引脚上，其余引脚剪掉。电源板需要另行处理，且只针对带有锁定电路的版本：FMD-POWER-04、-05、部分 -02，以及夏普 Twin Famicom AN-500。固件采用 C17 编写，对 MISRA C:2012 零偏离，遵循 NASA Power of 10 规则，所有寄存器访问都集中在一个小型汇编模块中，并在版本固定的 Docker 工具链中构建；主机单元测试的行覆盖率与分支覆盖率均为 100%，13 个仿真场景执行了固件的每一条指令。目前尚未在真实驱动器上运行过。
 
 ## 驱动器为何拒绝整盘写入
 
@@ -94,7 +94,7 @@ make fuses PROGRAMMER=usbasp
 make flash PROGRAMMER=usbasp
 ```
 
-如果用 Arduino Uno 或 Nano 作为编程器，请先通过 Arduino IDE 把 ArduinoISP 示例程序烧录到 Arduino，再将其与 ATtiny2313A 连线，并指定 `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`。Arduino IDE 只用于烧录 Arduino 本身；ATtiny 固件从不在 IDE 中构建，因为 IDE 附带的 AVR 编译器不支持 C23。
+如果用 Arduino Uno 或 Nano 作为编程器，请先通过 Arduino IDE 把 ArduinoISP 示例程序烧录到 Arduino，再将其与 ATtiny2313A 连线，并指定 `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`。Arduino IDE 只用于烧录 Arduino 本身；ATtiny 固件从不在 IDE 中构建，因此每颗芯片烧录的都是通过了 MISRA 检查、测试和仿真的映像。每个发布版本都附有由发布流水线构建的该映像。
 
 熔丝设置为：低位 `0xE4`，内部 8 MHz 振荡器，无时钟输出；高位 `0xD9`，4.3 V 掉电复位，保留编程功能。新芯片以 8 分频的 4 MHz 振荡器运行；固件在启动时把分频系数设为 1，因此未设置熔丝的芯片也能以 4 MHz 工作，但边沿抖动会加倍，且没有掉电保护。
 
@@ -183,9 +183,9 @@ ATtiny 不需要这种回接：6 脚的 INT0 直接在下降沿触发中断，1 
 <!-- figures:begin -->
 | 项目 | 数值 |
 |---|---|
-| 闪存占用 | 212 字节 |
+| 闪存占用 | 226 字节 |
 | 边沿中断处理程序 | 15 条指令 |
-| 固件源代码 | 非空行 154 行 |
+| 固件源代码 | 非空行 221 行 |
 <!-- figures:end -->
 
 数值取自正式版构建。

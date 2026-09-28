@@ -1,57 +1,37 @@
-#include <avr/interrupt.h>
-#include <avr/io.h>
-#include <avr/power.h>
-#include <avr/wdt.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "fdswu/assert.h"
 #include "fdswu/conditions.h"
 #include "fdswu/heads.h"
 #include "fdswu/pins.h"
-#include "port/registers.h"
-
-static constexpr uint8_t TOGGLE_MASK = (uint8_t)(1U << FDSWU_TOGGLE_BIT);
-static constexpr uint8_t FALLING_EDGE_SENSE = (uint8_t)(1U << ISC01);
-static constexpr uint8_t EDGE_FLAG = (uint8_t)(1U << INTF0);
-static constexpr uint8_t EDGE_INTERRUPT = (uint8_t)(1U << INT0);
-
-static bool toggled(void) {
-    return (FDSWU_TOGGLE_STATE & TOGGLE_MASK) != 0U;
-}
+#include "port/port.h"
 
 static void apply_heads(bool allowed) {
-    const fdswu_heads_plan_t plan = fdswu_heads_plan(toggled(), allowed);
-    FDSWU_HEAD_DIRECTION = plan.now;
-    FDSWU_NEXT_EDGE_HEADS = plan.next_edge;
-    FDSWU_LATER_EDGE_HEADS = plan.later_edge;
-    FDSWU_ASSERT((FDSWU_HEAD_DIRECTION & (uint8_t)~FDSWU_HEADS_MASK) == 0U);
-    FDSWU_ASSERT(allowed || (FDSWU_HEAD_DIRECTION == 0U));
+    const bool toggled = fdswu_port_begin_update();
+    const fdswu_heads_plan_t plan = fdswu_heads_plan(toggled, allowed);
+    fdswu_port_commit_heads(plan.now, plan.next_edge, plan.later_edge);
+    FDSWU_ASSERT((fdswu_port_head_direction() & FDSWU_NOT_HEADS_MASK) == 0U);
+    FDSWU_ASSERT(allowed || (fdswu_port_head_direction() == 0U));
 }
 
 static void start(void) {
-    MCUSR = 0U;
-    wdt_enable(WDTO_60MS);
-    clock_prescale_set(clock_div_1);
-    PORTB = FDSWU_UNUSED_PULLUPS_B;
-    PORTD = FDSWU_UNUSED_PULLUPS_D;
+    fdswu_port_start(FDSWU_UNUSED_PULLUPS_B, FDSWU_UNUSED_PULLUPS_D);
     apply_heads(false);
-    MCUCR = FALLING_EDGE_SENSE;
-    EIFR = EDGE_FLAG;
-    GIMSK = EDGE_INTERRUPT;
-    FDSWU_ASSERT(FDSWU_HEAD_DIRECTION == 0U);
-    FDSWU_ASSERT((GIMSK & EDGE_INTERRUPT) != 0U);
-    sei();
+    FDSWU_ASSERT(fdswu_port_head_direction() == 0U);
+    FDSWU_ASSERT(fdswu_port_pending_heads() == 0U);
 }
 
 int main(void) {
     start();
     bool was_allowed = false;
     for (;;) {
-        wdt_reset();
-        const bool allowed = fdswu_conditions_allow(PINA, PINB);
+        const uint16_t pins = fdswu_port_poll();
+        const uint8_t port_a_pins = (uint8_t)(pins & 0x00FFU);
+        const uint8_t port_b_pins = (uint8_t)(pins >> 8U);
+        const bool allowed = fdswu_conditions_allow(port_a_pins, port_b_pins);
         if (allowed != was_allowed) {
-            cli();
             apply_heads(allowed);
-            sei();
             was_allowed = allowed;
         }
     }

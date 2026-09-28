@@ -1,2 +1,0 @@
-patchedDependencies:
-  rp2040js@1.4.0: patches/rp2040js@1.4.0.patch

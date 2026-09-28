@@ -1,0 +1,67 @@
+diff --git a/simavr/cores/sim_tiny2313a.c b/simavr/cores/sim_tiny2313a.c
+index ec5f35c..b5f3331 100644
+--- a/simavr/cores/sim_tiny2313a.c
++++ b/simavr/cores/sim_tiny2313a.c
+@@ -127,6 +127,7 @@ static const struct mcu_t {
+ 				.r_ocr = OCR0A,
+ 				.com = AVR_IO_REGBITS(TCCR0A, COM0A0, 0x3),
+ 				.com_pin = AVR_IO_REGBIT(PORTB, 2),
++				.foc = AVR_IO_REGBIT(TCCR0B, FOC0A),
+ 				.interrupt = {
+ 					.enable = AVR_IO_REGBIT(TIMSK, OCIE0A),
+ 					.raised = AVR_IO_REGBIT(TIFR, OCF0A),
+@@ -137,6 +138,7 @@ static const struct mcu_t {
+ 				.r_ocr = OCR0B,
+ 				.com = AVR_IO_REGBITS(TCCR0A, COM0B0, 0x3),
+ 				.com_pin = AVR_IO_REGBIT(PORTD, 5),
++				.foc = AVR_IO_REGBIT(TCCR0B, FOC0B),
+ 				.interrupt = {
+ 					.enable = AVR_IO_REGBIT(TIMSK, OCIE0B),
+ 					.raised = AVR_IO_REGBIT(TIFR, OCF0B),
+diff --git a/simavr/sim/avr_timer.c b/simavr/sim/avr_timer.c
+index ea35dd5..863578e 100644
+--- a/simavr/sim/avr_timer.c
++++ b/simavr/sim/avr_timer.c
+@@ -188,7 +188,8 @@ avr_timer_irq_ext_clock(
+ 	avr_timer_t * p = (avr_timer_t *)param;
+ 	avr_t * avr = p->io.avr;
+ 
+-	if ((p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_VIRT) || !p->tov_top)
++	if ((p->ext_clock_flags & AVR_TIMER_EXTCLK_FLAG_VIRT) ||
++			(!p->tov_top && p->wgm_op_mode_kind != avr_timer_wgm_ctc))
+ 		return;			// we are clocked internally (actually should never come here)
+ 
+ 	int bing = 0;
+@@ -210,6 +211,7 @@ avr_timer_irq_ext_clock(
+ 		{ avr_timer_compa, avr_timer_compb, avr_timer_compc };
+ 
+ 	int overflow = 0;
++	int ctc_top_matched = 0;
+ 	/**
+ 	  *
+ 	  * Datasheet excerpt (Compare Match Output Unit):
+@@ -227,10 +229,12 @@ avr_timer_irq_ext_clock(
+ 		}
+ 		if (p->comp[compi].comp_cycles && (p->tov_base == p->comp[compi].comp_cycles)) {
+ 				dispatch[compi](avr, avr->cycle, param);
+-			if (p->wgm_op_mode_kind == avr_timer_wgm_ctc)
+-				p->tov_base = 0;
++			if (p->wgm_op_mode_kind == avr_timer_wgm_ctc && compi == AVR_TIMER_COMPA)
++				ctc_top_matched = 1;
+ 		}
+ 	}
++	if (ctc_top_matched)
++		p->tov_base = 0;
+ 
+ 	switch (p->wgm_op_mode_kind) {
+ 		case avr_timer_wgm_fc_pwm:	// in the avr_timer_write_ocr comment "OCR is not used here" - why?
+@@ -975,7 +979,8 @@ avr_timer_init(
+ 
+ 		if (p->comp[compi].r_ocr) // not all timers have all comparators
+ 			avr_register_io_write(avr, p->comp[compi].r_ocr, avr_timer_write_ocr, &p->comp[compi]);
+-		if (p->comp[compi].foc.reg)
++		if (p->comp[compi].foc.reg &&
++				(compi == 0 || p->comp[compi].foc.reg != p->comp[compi - 1].foc.reg))
+ 			avr_register_io_write(avr, p->comp[compi].foc.reg, avr_timer_write_foc, p);
+ 	}
+ 	avr_register_io_write(avr, p->r_tcnt, avr_timer_tcnt_write, p);

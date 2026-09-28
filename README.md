@@ -1,114 +1,86 @@
 # fdswriteunlock
 
-RP2040 firmware that takes over the write stage of a Famicom Disk System drive built on the Mitsumi FD3206P controller, so the drive can rewrite whole disks.
+ATtiny2313A firmware that takes over the write stage of a Famicom Disk System drive built on the Mitsumi FD3206P controller, so the drive can rewrite whole disks, with the chip as the only added part.
 
-**TL;DR:** flash `fdswriteunlock.uf2` onto a Raspberry Pi Pico, cut two traces on the drive board, and wire eight signals through a 74LVC245 buffer and two transistors as described in [`docs/hardware.md`](docs/hardware.md). The RP2040's PIO switches the write heads in hardware, one to two PIO cycles after each data edge. The firmware passes 20 emulator tests that execute every firmware instruction. It has not yet run in a real drive.
+**TL;DR:** program an ATtiny2313A, cut two traces on the drive board, and solder eight wires from the chip to the board. Nothing else is added. The chip's timer switches the write heads in hardware on every data edge. The firmware passes a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
 
 ## Why a drive refuses full-disk writes
 
 Drives built from late 1988 use the FD3206P controller in place of the earlier FD7201P. The FD3206P lets the RAM adapter rewrite a single file but disconnects the write heads when it sees a write of the whole disk surface, and the RAM adapter reports error 26. FD7201P drives do not do this and do not need this firmware.
 
-The board replaces the controller's write stage. Two cut traces separate the FD3206P from the write heads, and the RP2040 drives the heads from the same signals the controller receives.
+The ATtiny replaces the controller's write stage. Two cut traces separate the FD3206P from the write heads, and the ATtiny drives the heads from the same signals the controller receives.
 
 ## How it works
 
-```mermaid
-flowchart LR
-    RAM[RAM adapter] -->|WRITE DATA, /WRITE GATE| FD[FD3206P]
-    FD -->|/WRITE PROTECT, /READY| RAM
-    FD -.->|traces cut| HEADS[Write heads]
-    FD --> BUF[74LVC245 5 V to 3.3 V]
-    BUF --> PIO[RP2040 PIO: toggle on each falling edge]
-    BUF --> IRQ[RP2040 GPIO interrupt: write gating]
-    PIO --> DRV[Two transistors, pull low only]
-    IRQ -->|output enable override| DRV
-    DRV --> HEADS
-```
-
-- **Data toggle, in PIO.** A four-instruction PIO program waits for each falling edge of WRITE DATA and swaps which head output is active, using side-set so the pin changes in the same cycle the wait ends. Input synchronisation is bypassed on that pin. The CPU is not involved.
-- **Write gating, in an interrupt.** A highest-priority GPIO interrupt fires on any change of /WRITE GATE, /WRITE PROTECT or /READY. It enables the head outputs through the pad output-enable override only while all three are low. The main loop also forces that interrupt once per millisecond as a safety re-check.
-- **Output stage.** Each head line is pulled low by an NPN transistor and is otherwise left to the drive's own pull-up, the way the original 74LS45 decoder drove it. With the RP2040 in reset or unpowered, the base pull-down resistors keep both heads released.
-- **Supervision.** A 250 ms watchdog resets the chip if the main loop stops, which releases the heads.
+- **Head toggle, in the timer.** WRITE DATA clocks Timer0 through its T0 pin. The timer runs in clear-on-match mode with both compare values at 0, so every falling edge is a match on both compare units, and each unit toggles its output pin. A forced compare at start-up sets the two outputs to opposite levels, so exactly one head line is low at any time. No instruction runs per data edge.
+- **Write gating, in an interrupt.** A pin-change interrupt fires when /WRITE GATE, /WRITE PROTECT or /READY changes. The head pins are outputs only while all three are low. Otherwise they are inputs, and the drive's own pull-up resistors release the heads. The main loop repeats the same check continuously as a safety net.
+- **Supervision.** A 60 ms watchdog resets the chip if the main loop stops, and a reset leaves every pin as an input. The 4.3 V brown-out fuse holds the chip in reset while the supply is low, at power-up and power-down.
 
 | Measure | Value | Source |
 |---|---|---|
-| Data edge to head switch | 1 to 2 PIO cycles, 8 to 16 ns | RP2040 datasheet, input synchroniser bypassed. rp2040js resolves a PIO pin wait the instant the pin changes and reports 0 ns, so it cannot measure this |
-| Gate change to heads released or engaged | 512 ns | emulator, 100 gate changes at random phase |
-| Shortest data edge spacing handled | 4.7 us, the 10 percent fast limit | emulator, 1000 edges |
+| Data edge to head switch | a few CPU cycles, with one cycle, 125 ns, of variation | ATtiny2313A timer external clock synchroniser |
+| Gate change to heads released or engaged | 5.75 us | simulation |
+| Shortest data edge spacing handled | 4.7 us, the 10 percent fast limit | simulation, 1000 edges |
 
-The drive records at 96.4 kHz, so a bit cell is 10.4 us. One PIO cycle of variation is 0.08 percent of a cell.
+The drive records at 96.4 kHz, so a bit cell is 10.4 us. One cycle of variation is 1.2 percent of a cell. A gate change always falls inside a gap between blocks, at least 480 bits long, so a few microseconds of gate delay only trims or extends that gap.
 
-## Console
+## Pins
 
-The console runs on USB CDC and on UART0 at 115200 baud, GP0 transmit and GP1 receive.
+| ATtiny2313A pin | Function | Connects to |
+|---|---|---|
+| 8, PD4 T0 | WRITE DATA | FD3206P pin 6 |
+| 12, PB0 | /WRITE GATE | FD3206P pin 4 |
+| 13, PB1 | /WRITE PROTECT | FD3206P pin 5 |
+| 15, PB3 | /READY | FD3206P pin 13 |
+| 14, PB2 OC0A | Head 1 | Head 1 line, head side of the cut beside FD3206P pin 15 |
+| 9, PD5 OC0B | Head 2 | Head 2 line, head side of the cut beside FD3206P pin 14 |
+| 20, VCC | +5 V | FD3206P pin 20 |
+| 10, GND | Ground | FD3206P pin 10 |
 
-- At start-up it prints `fdswriteunlock ready, power-on start` or `fdswriteunlock ready, restarted by watchdog`.
-- After each write it prints `write N: E edges in T us, R edges/s`, the average edge rate over the whole time the gate was open.
-- Sending `s` prints `fdswriteunlock status: writing=yes|no writes=N edges=E`.
+Every other pin is unused and has its internal pull-up enabled. Pins 1, 17, 18 and 19 are the programming pins, so the chip can be reprogrammed after installation from a clip or header.
 
-On macOS: `screen /dev/cu.usbmodem* 115200`. On Linux: `screen /dev/ttyACM0 115200`.
+The ATtiny4313 has the same pinout and runs the same firmware.
 
-## Build
+## Program with the Arduino IDE
 
-Requirements: CMake 3.20 or newer, Ninja, and an Arm GNU toolchain with newlib. CMake fetches pico-sdk 2.3.1 on first configure.
+1. Load the ArduinoISP example onto an Arduino Uno or Nano and wire it to the ATtiny2313A as an ISP programmer.
+2. In the Arduino IDE preferences, add `http://drazzy.com/package_drazzy.com_index.json` to Additional Boards Manager URLs, then install ATTinyCore from the Boards Manager.
+3. Open the `fdswriteunlock` folder of this repository as a sketch.
+4. Under Tools, select the board `ATtiny4313/2313 (No Bootloader)`, chip `ATtiny2313/ATtiny2313A`, clock `8 MHz (internal)`, and `B.O.D. Enabled (4.3v)`. Set Programmer to `Arduino as ISP`.
+5. Run Tools, Burn Bootloader once. The part has no bootloader, so this only writes the clock and brown-out fuses.
+6. Run Sketch, Upload Using Programmer.
 
-macOS:
+The sketch file is empty on purpose: the firmware defines its own `main`, so the Arduino core's `setup` and `loop` are never linked. This route follows ATTinyCore's documented menus but has not yet been test-built here with arduino-cli.
+
+## Program from the command line
 
 ```sh
-brew install cmake ninja picotool
+make
+make fuses PROGRAMMER=usbasp
+make flash PROGRAMMER=usbasp
 ```
 
-Then download the Arm GNU Toolchain for macOS from developer.arm.com, or install the `gcc-arm-embedded` cask, and point `PICO_TOOLCHAIN_PATH` at its `bin` folder. Homebrew's `arm-none-eabi-gcc` formula ships without newlib and cannot build the SDK.
-
-Debian or Ubuntu:
-
-```sh
-sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib cmake ninja-build
-```
-
-Build:
-
-```sh
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-```
-
-The result is `build/fdswriteunlock.uf2`.
-
-## Flash
-
-1. Hold the BOOTSEL button on the Pico and plug it into USB. A drive named `RPI-RP2` appears.
-2. Copy `build/fdswriteunlock.uf2` onto it. The Pico reboots into the firmware.
-
-With picotool instead: `picotool load -x build/fdswriteunlock.uf2 -f`.
+For an Arduino running ArduinoISP, pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`. The fuses are low `0xE4`, 8 MHz internal oscillator with no clock output, and high `0xD9`, brown-out reset at 4.3 V with programming left enabled. A new chip runs its 4 MHz oscillator divided by 8. The firmware sets the clock prescaler to 1 at start-up, so an unfused chip still works at 4 MHz, with 250 ns of edge variation instead of 125 ns and no brown-out protection.
 
 ## Install
 
-See [`docs/hardware.md`](docs/hardware.md) for the parts list, the wiring table and the install steps.
+See [`docs/hardware.md`](docs/hardware.md).
 
 ## Tests
 
-The tests run the real firmware binary in the [rp2040js](https://github.com/wokwi/rp2040js) emulator. The harness steps the PIO once per CPU cycle, so the CPU, the PIO and the timers stay in lockstep.
-
 ```sh
-cmake -S . -B build-emulator -G Ninja -DCMAKE_BUILD_TYPE=Release -DFDSWRITEUNLOCK_USB_CONSOLE=OFF
-cmake --build build-emulator
-cd test
-pnpm install --frozen-lockfile
-pnpm typecheck
-pnpm test
+make test
 ```
 
-Set `ARM_TOOLCHAIN_BIN` when `arm-none-eabi-objdump` is not on `PATH`.
+The suite runs the real firmware in simavr and fails if any firmware instruction never executes. It needs `avr-gcc`, `avr-libc`, `libelf` and `git`.
 
-Differences between the tested build and the shipped one:
+simavr at the pinned commit gets three things about this timer wrong compared with the datasheet, so `make test` builds it from source with [`test/simavr-datasheet-fixes.patch`](test/simavr-datasheet-fixes.patch) applied:
 
-- The emulator build turns off the USB console. The USB stack reads the flash unique ID through the boot ROM, and the boot ROM cannot be loaded into the emulator: part of it is licensed for use on RP2040 silicon only. The emulator starts the firmware from its own reset vector instead.
-- rp2040js 1.4.0 never counts PWM input edges, because a `&&` stands where a `&` belongs in `RPPWM.gpioOnInput`. [`test/patches/rp2040js@1.4.0.patch`](test/patches/rp2040js@1.4.0.patch) fixes that one character.
-- The harness refreshes every input after boot so the emulator's PWM input level matches the pin, as the real input synchroniser does.
-- rp2040js keeps a software-pended hardware interrupt pending forever. The firmware requests its safety re-check through the IO bank force register instead, which behaves the same on silicon and in the emulator.
+- It ignores external clock edges when the timer's TOP is 0. In clear-on-match mode with OCR0A at 0 the chip toggles on every clock.
+- After compare A matches in clear-on-match mode, it resets the counter before checking compare B, so compare B never matches.
+- It does not wire the force-compare bits of the ATtiny2313A, and would register the handler twice where both bits share one register.
 
-The last test fails if any instruction of the firmware sources never executes.
+What simulation does not show: simavr updates the timer at the instant the pin changes, without the synchroniser delay, and its outputs start one edge later than on the chip. Neither changes the result, since every edge still moves the low level to the other head. A logic analyzer on the board is the check for real timing.
 
 ## Provenance
 
@@ -116,4 +88,4 @@ Written independently from public documentation. [`docs/clean-room.md`](docs/cle
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE). pico-sdk is BSD-3-Clause and is fetched at build time, not stored here.
+MIT. See [`LICENSE`](LICENSE). The one exception is `test/simavr-datasheet-fixes.patch`, a change to simavr, which is GPL-3.0-or-later like simavr itself.

@@ -1,6 +1,7 @@
 /* SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com> */
 /* SPDX-License-Identifier: MIT */
 
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -15,6 +16,7 @@ enum {
     WRITE_PULSE_LOW_NS = 1000,
     SETTLE_NS = 20000,
     GATE_RESPONSE_LIMIT_NS = 10000,
+    LOOP_PHASE_SWEEP_CYCLES = 64,
     IDLE_EDGE_COUNT = 100,
     WRITE_EDGE_COUNT = 1000,
     SOAK_NS = 600000000,
@@ -168,20 +170,38 @@ static bool rising_edge_leaves_heads_unchanged(void) {
     return true;
 }
 
-static bool heads_release_when_condition_goes_high(board_signal_t signal) {
+static uint64_t worst_gate_response_ns;
+
+static void record_gate_response(uint64_t elapsed) {
+    if (elapsed > worst_gate_response_ns) {
+        worst_gate_response_ns = elapsed;
+    }
+}
+
+static bool release_at_phase(board_signal_t signal, uint64_t phase) {
     board_t *board = open_board();
     apply_conditions(board, WRITING);
     write_pulse(board, HALF_BIT_CELL_NS);
+    board_run_cycles(board, phase);
     const board_heads_t before = board_heads(board);
 
     const uint64_t elapsed = response_ns(board, signal, LEVEL_HIGH);
 
     const board_heads_t after = board_heads(board);
     board_close(board);
+    record_gate_response(elapsed);
     CHECK(one_head_low(before));
     CHECK(after == HEADS_RELEASED);
     CHECK(elapsed <= GATE_RESPONSE_LIMIT_NS);
     return true;
+}
+
+static bool heads_release_when_condition_goes_high(board_signal_t signal) {
+    bool passed = true;
+    for (uint64_t phase = 0; phase < LOOP_PHASE_SWEEP_CYCLES; phase++) {
+        passed = release_at_phase(signal, phase) && passed;
+    }
+    return passed;
 }
 
 static bool heads_release_when_write_gate_closes(void) {
@@ -196,17 +216,27 @@ static bool heads_release_when_ready_drops(void) {
     return heads_release_when_condition_goes_high(SIGNAL_READY);
 }
 
-static bool one_head_engages_when_write_gate_opens(void) {
+static bool engage_at_phase(uint64_t phase) {
     board_t *board = open_board();
     apply_conditions(board, GATE_CLOSED);
+    board_run_cycles(board, phase);
 
     const uint64_t elapsed = response_ns(board, SIGNAL_WRITE_GATE, LEVEL_LOW);
 
     const board_heads_t heads = board_heads(board);
     board_close(board);
+    record_gate_response(elapsed);
     CHECK(one_head_low(heads));
     CHECK(elapsed <= GATE_RESPONSE_LIMIT_NS);
     return true;
+}
+
+static bool one_head_engages_when_write_gate_opens(void) {
+    bool passed = true;
+    for (uint64_t phase = 0; phase < LOOP_PHASE_SWEEP_CYCLES; phase++) {
+        passed = engage_at_phase(phase) && passed;
+    }
+    return passed;
 }
 
 static bool heads_end_released_after_write_gate_glitch(void) {
@@ -305,6 +335,8 @@ int main(int argc, char **argv) {
         failures += !passed;
     }
     const uint32_t missing = coverage_report_missing();
+    printf("worst gate response over %d loop phases: %" PRIu64 " ns of %d ns allowed\n", LOOP_PHASE_SWEEP_CYCLES,
+           worst_gate_response_ns, GATE_RESPONSE_LIMIT_NS);
     printf("%s: %zu tests, %d failed, %u firmware instructions never executed\n", target_mcu, test_count, failures,
            missing);
     return failures == 0 && missing == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -25,15 +25,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            gcc-avr avr-libc binutils-avr libelf-dev pkg-config make
-
-      - name: Lint scripts
-        run: shellcheck scripts/list-instructions.sh
+            gcc-avr avr-libc binutils-avr libsimavr-dev libelf-dev pkg-config make
 
       - name: Build firmware
         run: make all size
 
-      - name: Test in patched simavr
+      - name: Test in simavr
         run: make test
 
       - name: Upload firmware

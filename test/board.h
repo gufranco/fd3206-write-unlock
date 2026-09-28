@@ -22,8 +22,7 @@ typedef enum {
     HEADS_HEAD1_LOW,
     HEADS_HEAD2_LOW,
     HEADS_BOTH_LOW,
-    HEADS_NONE_LOW,
-    HEADS_PARTLY_RELEASED
+    HEADS_DRIVEN_HIGH
 } board_heads_t;
 
 typedef struct board board_t;

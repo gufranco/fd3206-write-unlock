@@ -12,7 +12,6 @@ Only public documentation informed this code:
 | Microchip document 8246, ATtiny2313A/4313 | Pinout, timer, interrupts, supply range, pin current |
 | avrdude 8 part database | Fuse bit meanings and factory values |
 | ATTinyCore board definitions | Arduino IDE menu names for the ATtiny2313A |
-| simavr source at the pinned commit, GPL-3.0 | Emulator behaviour used by the tests; built at test time, not shipped |
 
 ## Prior art not copied
 
@@ -22,10 +21,10 @@ Stephen-Arsenault/FDS-FD3206-Modchip, CC BY-SA 4.0, puts a programmable logic de
 
 | Check | Result |
 |---|---|
-| Structure | Prior art is one CUPL equation file for a GAL soldered on top of the controller, with an extra wire. This is C firmware for a microcontroller wired off the controller: a hardware timer toggle, a pin-change interrupt, a watchdog, a Makefile and a simulation harness. No shared structure |
+| Structure | Prior art is one CUPL equation file for a GAL, clocked through an extra wire from one of its own pins. This is a C main loop and a 15-instruction assembly interrupt for a microcontroller that needs no wire, plus a Makefile and a simavr harness. No shared structure |
 | Naming | No identifier, file name, project name or string from the prior art. Shared words are the drive's own signal names |
-| Logic | Prior art is combinational logic plus a clocked register clocked through a jumper wire. This clocks a timer from the data line, toggles two compare outputs, and gates them through pin directions from an interrupt |
+| Logic | The function is the same, because it is the drive's function: one head per flip-flop state, both released unless three conditions hold. The expression differs: the GAL is combinational logic and a register, this swaps two precomputed port values on an edge interrupt and drives the pins open-drain instead of both ways |
 | Documentation | README, hardware guide and requirements written from scratch |
 | Code transplant | No block of 4 or more lines matches; the languages differ |
-| Third-party code | `test/simavr-datasheet-fixes.patch` modifies simavr, so that one file is licensed GPL-3.0-or-later like simavr. It changes the emulator used by the tests and is not part of the firmware |
+| Third-party code | None in the firmware. simavr is used by the tests as an installed library |
 | License | MIT, chosen because nothing from the CC BY-SA prior art is included |

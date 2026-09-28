@@ -15,8 +15,8 @@ enum {
     CPU_FREQUENCY = 8000000,
     CLOCK_PRESCALER_ADDRESS = 0x46,
     WATCHDOG_CONTROL_ADDRESS = 0x41,
-    HEAD1_BIT = 2,
-    HEAD2_BIT = 5
+    HEAD1_BIT = 3,
+    HEAD2_BIT = 2
 };
 
 typedef struct {
@@ -25,10 +25,10 @@ typedef struct {
 } pin_t;
 
 static const pin_t SIGNAL_PINS[SIGNAL_COUNT] = {
-    [SIGNAL_WRITE_GATE] = {'B', 0},
-    [SIGNAL_WRITE_PROTECT] = {'B', 1},
-    [SIGNAL_READY] = {'B', 3},
-    [SIGNAL_WRITE_DATA] = {'D', 4},
+    [SIGNAL_WRITE_GATE] = {'A', 1},
+    [SIGNAL_WRITE_PROTECT] = {'A', 0},
+    [SIGNAL_READY] = {'B', 1},
+    [SIGNAL_WRITE_DATA] = {'D', 2},
 };
 
 struct board {
@@ -54,26 +54,24 @@ static bool bit_set(uint8_t value, uint8_t bit) {
 }
 
 static board_heads_t classify_heads(bool head1_enabled, bool head1_low, bool head2_enabled, bool head2_low) {
-    if (!head1_enabled && !head2_enabled) {
-        return HEADS_RELEASED;
+    const bool pulled1 = head1_enabled && head1_low;
+    const bool pulled2 = head2_enabled && head2_low;
+    if ((head1_enabled && !head1_low) || (head2_enabled && !head2_low)) {
+        return HEADS_DRIVEN_HIGH;
     }
-    if (head1_enabled != head2_enabled) {
-        return HEADS_PARTLY_RELEASED;
-    }
-    if (head1_low && head2_low) {
+    if (pulled1 && pulled2) {
         return HEADS_BOTH_LOW;
     }
-    if (head1_low) {
+    if (pulled1) {
         return HEADS_HEAD1_LOW;
     }
-    return head2_low ? HEADS_HEAD2_LOW : HEADS_NONE_LOW;
+    return pulled2 ? HEADS_HEAD2_LOW : HEADS_RELEASED;
 }
 
 board_heads_t board_heads(const board_t *board) {
     const avr_ioport_state_t port_b = port_state(board, 'B');
-    const avr_ioport_state_t port_d = port_state(board, 'D');
     return classify_heads(bit_set((uint8_t)port_b.ddr, HEAD1_BIT), !bit_set((uint8_t)port_b.port, HEAD1_BIT),
-                          bit_set((uint8_t)port_d.ddr, HEAD2_BIT), !bit_set((uint8_t)port_d.port, HEAD2_BIT));
+                          bit_set((uint8_t)port_b.ddr, HEAD2_BIT), !bit_set((uint8_t)port_b.port, HEAD2_BIT));
 }
 
 static void track_heads(board_t *board) {

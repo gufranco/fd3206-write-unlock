@@ -6,12 +6,14 @@ The firmware drives the two write-head lines of a Famicom Disk System drive that
 
 | Signal | Active level | FD3206P pin | ATtiny2313A pin |
 |---|---|---|---|
-| WRITE DATA | falling edge | 6 | 8, PD4 T0 |
-| /WRITE GATE | low | 4 | 12, PB0 |
-| /WRITE PROTECT | low | 5 | 13, PB1 |
-| /READY | low | 13 | 15, PB3 |
-| Head 1 | low drives the head | 15, head side | 14, PB2 OC0A |
-| Head 2 | low drives the head | 14, head side | 9, PD5 OC0B |
+| WRITE DATA | falling edge | 6 | 6, PD2 INT0 |
+| /WRITE GATE | low | 4 | 4, PA1 |
+| /WRITE PROTECT | low | 5 | 5, PA0 |
+| /READY | low | 13 | 13, PB1 |
+| Head 2 | low drives the head | 14 | 14, PB2 |
+| Head 1 | low drives the head | 15 | 15, PB3 |
+
+The ATtiny sits on the FD3206P, so each pin number is the same on both chips.
 
 ## Requirements
 
@@ -53,11 +55,11 @@ Ten microseconds is one bit cell. A gate change falls in a gap between blocks of
 - WHEN /WRITE GATE goes low for 250 ns
 - THEN both head pins are inputs afterwards
 
-### Requirement: after start-up no pin SHALL be an output, and no input line SHALL have a pull-up
+### Requirement: after start-up no pin SHALL be an output, and no pin soldered to the FD3206P SHALL have a pull-up
 #### Scenario: idle inputs
 - GIVEN all inputs high
 - WHEN start-up finishes
-- THEN every data direction register is zero, and the pull-ups on WRITE DATA and the three condition pins are off
+- THEN every data direction register is zero, and the pull-ups on WRITE DATA, the three condition pins and both head pins are off
 
 ### Requirement: the firmware MUST run undivided from its clock and keep the watchdog armed
 #### Scenario: after start-up
@@ -76,4 +78,4 @@ Ten microseconds is one bit cell. A gate change falls in a gap between blocks of
 - FD3206P pads for +5 V, GND, /READY, /WRITE GATE, /WRITE PROTECT and WRITE DATA, and the head traces beside pins 14 and 15: the labelled solder-side photos in the Famicom World article "Famicom Disk System FD3206 Write Mod".
 - Head drive behaviour, one head per flip-flop state and both released unless all three conditions hold: the 74LS76 and 74LS45 schematic in the same article.
 - 96.4 kHz bit rate, 10 percent tolerance, about 1 us pulses, gaps of at least 480 bits: Brad Taylor, "Famicom Disk System technical reference", and the nesdev wiki "FDS disk format".
-- ATtiny2313A pinout, Timer0 clear-on-match mode, force output compare, pin-change interrupts, fuses: Microchip document 8246 and the avrdude 8 part database.
+- ATtiny2313A pinout, INT0, GPIO registers, fuses: Microchip document 8246 and the avrdude 8 part database.

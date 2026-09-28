@@ -1,56 +1,63 @@
 # fdswriteunlock
 
-ATtiny2313A firmware that takes over the write stage of a Famicom Disk System drive built on the Mitsumi FD3206P controller, so the drive can rewrite whole disks, with the chip as the only added part.
+ATtiny2313A firmware that sits on top of the Mitsumi FD3206P controller of a Famicom Disk System drive and does the controller's write stage itself, so the drive can rewrite whole disks with nothing cut and nothing else added.
 
-**TL;DR:** program an ATtiny2313A, cut two traces on the drive board, and solder eight wires from the chip to the board. Nothing else is added. The chip's timer switches the write heads in hardware on every data edge. The firmware passes a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
+**TL;DR:** program an ATtiny2313A, place it on the FD3206P pin 1 over pin 1, solder its pins 4, 5, 6, 10, 13, 14, 15 and 20 to the pins underneath, and clip the rest. The firmware is 95 lines. It passes a 13-scenario simulation suite that executes every firmware instruction. It has not yet run in a real drive.
 
 ## Why a drive refuses full-disk writes
 
-Drives built from late 1988 use the FD3206P controller in place of the earlier FD7201P. The FD3206P lets the RAM adapter rewrite a single file but disconnects the write heads when it sees a write of the whole disk surface, and the RAM adapter reports error 26. FD7201P drives do not do this and do not need this firmware.
+Drives built from late 1988 use the FD3206P controller in place of the earlier FD7201P. The FD3206P lets the RAM adapter rewrite a single file but releases the write heads when it sees a write of the whole disk surface, and the RAM adapter reports error 26. FD7201P drives do not do this and do not need this firmware.
 
-The ATtiny replaces the controller's write stage. Two cut traces separate the FD3206P from the write heads, and the ATtiny drives the heads from the same signals the controller receives.
+## What the firmware does
 
-## How it works
+The same logic as the classic write mod: a flip-flop that changes state on every falling edge of WRITE DATA, and a gate that lets one head be driven only while /READY, /WRITE PROTECT and /WRITE GATE are all low.
 
-- **Head toggle, in the timer.** WRITE DATA clocks Timer0 through its T0 pin. The timer runs in clear-on-match mode with both compare values at 0, so every falling edge is a match on both compare units, and each unit toggles its output pin. A forced compare at start-up sets the two outputs to opposite levels, so exactly one head line is low at any time. No instruction runs per data edge.
-- **Write gating, in an interrupt.** A pin-change interrupt fires when /WRITE GATE, /WRITE PROTECT or /READY changes. The head pins are outputs only while all three are low. Otherwise they are inputs, and the drive's own pull-up resistors release the heads. The main loop repeats the same check continuously as a safety net.
-- **Supervision.** A 60 ms watchdog resets the chip if the main loop stops, and a reset leaves every pin as an input. The 4.3 V brown-out fuse holds the chip in reset while the supply is low, at power-up and power-down.
+- **Edge interrupt.** WRITE DATA lands on pin 6, which is the ATtiny's INT0. A 15-instruction assembly handler writes the next head state to the port first, then swaps two precomputed values ready for the edge after. It touches no flags and no C state.
+- **Gate.** The main loop reads the three conditions. When they change it recomputes the two values the handler swaps, with interrupts off for the few instructions that takes. Otherwise it only services the watchdog.
+- **Pull low, never drive high.** A head pin is either an output at 0 or an input. The drive's own pull-up resistors hold a released head high, which is what the original circuit's open-collector decoder did. The FD3206P shares these two pins, and a pin that only ever pulls low cannot short against it.
+- **Watchdog.** 60 ms. A reset leaves every pin an input, which releases both heads.
+
+Timing at 8 MHz:
 
 | Measure | Value | Source |
 |---|---|---|
-| Data edge to head switch | a few CPU cycles, with one cycle, 125 ns, of variation | ATtiny2313A timer external clock synchroniser |
-| Gate change to heads released or engaged | 5.75 us | simulation |
-| Shortest data edge spacing handled | 4.7 us, the 10 percent fast limit | simulation, 1000 edges |
+| Interrupt taken to head written | 10 cycles, 1.25 us | instruction count of the handler |
+| Whole handler | about 30 cycles, 3.75 us | instruction count, under the 4.7 us shortest edge spacing |
+| Variation between edges | up to 2 cycles, 250 ns, from the instruction in progress | AVR interrupt response |
+| Gate change to heads released or engaged | under 10 us | simulation limit |
 
-The drive records at 96.4 kHz, so a bit cell is 10.4 us. One cycle of variation is 1.2 percent of a cell. A gate change always falls inside a gap between blocks, at least 480 bits long, so a few microseconds of gate delay only trims or extends that gap.
+The drive records at 96.4 kHz, a bit cell of 10.4 us. 250 ns of variation is 2.4 percent of a cell. A gate change falls inside a gap between blocks of at least 480 bits, so microseconds of gate delay only trim or extend that gap.
+
+## One thing it does not handle
+
+On single-file saves the FD3206P still writes, on the same two pins, driven from its own flip-flop. If the two flip-flops disagree, both heads are pulled low at once. The classic GAL modchip that sits on this chip has the same property and drives its pins high as well; this firmware at least cannot short against the controller. Whether saves suffer is settled only on a drive. The fix that removes it for certain is the two trace cuts of the classic wired mod, which this project deliberately does not require.
 
 ## Pins
 
-| ATtiny2313A pin | Function | Connects to |
+| ATtiny2313A pin | FD3206P signal | Action |
 |---|---|---|
-| 8, PD4 T0 | WRITE DATA | FD3206P pin 6 |
-| 12, PB0 | /WRITE GATE | FD3206P pin 4 |
-| 13, PB1 | /WRITE PROTECT | FD3206P pin 5 |
-| 15, PB3 | /READY | FD3206P pin 13 |
-| 14, PB2 OC0A | Head 1 | Head 1 line, head side of the cut beside FD3206P pin 15 |
-| 9, PD5 OC0B | Head 2 | Head 2 line, head side of the cut beside FD3206P pin 14 |
-| 20, VCC | +5 V | FD3206P pin 20 |
-| 10, GND | Ground | FD3206P pin 10 |
+| 4, PA1 | /WRITE GATE | solder |
+| 5, PA0 | /WRITE PROTECT | solder |
+| 6, PD2 INT0 | WRITE DATA | solder |
+| 10 | GND | solder |
+| 13, PB1 | /READY | solder |
+| 14, PB2 | Head 2 | solder |
+| 15, PB3 | Head 1 | solder |
+| 20 | +5 V | solder |
+| 1, 2, 3, 7, 8, 9, 11, 12, 16, 17, 18, 19 | unknown | clip so they touch nothing |
 
-Every other pin is unused and has its internal pull-up enabled. Pins 1, 17, 18 and 19 are the programming pins, so the chip can be reprogrammed after installation from a clip or header.
-
-The ATtiny4313 has the same pinout and runs the same firmware.
+The ATtiny4313 has the same pinout and runs the same firmware. Install details are in [`docs/hardware.md`](docs/hardware.md).
 
 ## Program with the Arduino IDE
 
 1. Load the ArduinoISP example onto an Arduino Uno or Nano and wire it to the ATtiny2313A as an ISP programmer.
 2. In the Arduino IDE preferences, add `http://drazzy.com/package_drazzy.com_index.json` to Additional Boards Manager URLs, then install ATTinyCore from the Boards Manager.
 3. Open the `fdswriteunlock` folder of this repository as a sketch.
-4. Under Tools, select the board `ATtiny4313/2313 (No Bootloader)`, chip `ATtiny2313/ATtiny2313A`, clock `8 MHz (internal)`, and `B.O.D. Enabled (4.3v)`. Set Programmer to `Arduino as ISP`.
+4. Under Tools, select the board `ATtiny4313/2313 (No Bootloader)`, chip `ATtiny2313/ATtiny2313A`, clock `8 MHz (internal)` and `B.O.D. Enabled (4.3v)`. Set Programmer to `Arduino as ISP`.
 5. Run Tools, Burn Bootloader once. The part has no bootloader, so this only writes the clock and brown-out fuses.
 6. Run Sketch, Upload Using Programmer.
 
-The sketch file is empty on purpose: the firmware defines its own `main`, so the Arduino core's `setup` and `loop` are never linked. This route follows ATTinyCore's documented menus but has not yet been test-built here with arduino-cli.
+The sketch file is empty on purpose: the firmware defines its own `main`, so the Arduino core's `setup` and `loop` are never linked. This route follows ATTinyCore's board definitions but has not yet been test-built here with arduino-cli.
 
 ## Program from the command line
 
@@ -60,11 +67,7 @@ make fuses PROGRAMMER=usbasp
 make flash PROGRAMMER=usbasp
 ```
 
-For an Arduino running ArduinoISP, pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`. The fuses are low `0xE4`, 8 MHz internal oscillator with no clock output, and high `0xD9`, brown-out reset at 4.3 V with programming left enabled. A new chip runs its 4 MHz oscillator divided by 8. The firmware sets the clock prescaler to 1 at start-up, so an unfused chip still works at 4 MHz, with 250 ns of edge variation instead of 125 ns and no brown-out protection.
-
-## Install
-
-See [`docs/hardware.md`](docs/hardware.md).
+For an Arduino running ArduinoISP, pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`. The fuses are low `0xE4`, 8 MHz internal oscillator with no clock output, and high `0xD9`, brown-out reset at 4.3 V with programming left enabled. A new chip runs its 4 MHz oscillator divided by 8; the firmware sets the prescaler to 1 at start-up, so an unfused chip still works at 4 MHz, with twice the edge variation and no brown-out protection.
 
 ## Tests
 
@@ -72,15 +75,7 @@ See [`docs/hardware.md`](docs/hardware.md).
 make test
 ```
 
-The suite runs the real firmware in simavr and fails if any firmware instruction never executes. It needs `avr-gcc`, `avr-libc`, `libelf` and `git`.
-
-simavr at the pinned commit gets three things about this timer wrong compared with the datasheet, so `make test` builds it from source with [`test/simavr-datasheet-fixes.patch`](test/simavr-datasheet-fixes.patch) applied:
-
-- It ignores external clock edges when the timer's TOP is 0. In clear-on-match mode with OCR0A at 0 the chip toggles on every clock.
-- After compare A matches in clear-on-match mode, it resets the counter before checking compare B, so compare B never matches.
-- It does not wire the force-compare bits of the ATtiny2313A, and would register the handler twice where both bits share one register.
-
-What simulation does not show: simavr updates the timer at the instant the pin changes, without the synchroniser delay, and its outputs start one edge later than on the chip. Neither changes the result, since every edge still moves the low level to the other head. A logic analyzer on the board is the check for real timing.
+The suite runs the real firmware in simavr and fails if any firmware instruction never executes. It needs `avr-gcc`, `avr-libc`, `libsimavr`, `libelf` and Python 3.
 
 ## Provenance
 
@@ -88,4 +83,4 @@ Written independently from public documentation. [`docs/clean-room.md`](docs/cle
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE). The one exception is `test/simavr-datasheet-fixes.patch`, a change to simavr, which is GPL-3.0-or-later like simavr itself.
+MIT. See [`LICENSE`](LICENSE).

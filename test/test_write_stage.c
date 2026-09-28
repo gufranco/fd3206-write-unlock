@@ -17,8 +17,9 @@ enum {
     SOAK_NS = 600000000,
     GLITCH_NS = 250,
     WATCHDOG_ENABLE_BIT = 0x08,
-    CONDITION_PIN_BITS = 0x0B,
-    WRITE_DATA_PIN_BIT = 0x10
+    SIGNAL_PIN_BITS_B = 0x0E,
+    SIGNAL_PIN_BITS_A = 0x03,
+    WRITE_DATA_PIN_BIT_D = 0x04
 };
 
 typedef struct {
@@ -78,6 +79,7 @@ typedef struct {
     uint32_t one_head_low;
     uint32_t repeats;
     uint32_t invalid;
+    uint32_t driven_high;
 } head_census_t;
 
 static bool one_head_low(board_heads_t heads) {
@@ -94,6 +96,7 @@ static head_census_t census_heads(board_t *board, uint32_t edges, uint64_t perio
         census.one_head_low += one_head_low(heads);
         census.repeats += one_head_low(heads) && heads == previous;
         census.invalid += heads != HEADS_RELEASED && !one_head_low(heads);
+        census.driven_high += (board_port_levels(board, 'B') & SIGNAL_PIN_BITS_B) != 0;
         previous = heads;
     }
     return census;
@@ -140,6 +143,7 @@ static bool one_head_low_and_alternating_at_fastest_data_rate(void) {
     CHECK(census.one_head_low == WRITE_EDGE_COUNT);
     CHECK(census.repeats == 0);
     CHECK(census.invalid == 0);
+    CHECK(census.driven_high == 0);
     return true;
 }
 
@@ -217,18 +221,18 @@ static bool heads_end_released_after_write_gate_glitch(void) {
     return true;
 }
 
-static bool startup_drives_no_pin_and_pulls_no_input_line(void) {
+static bool startup_drives_no_pin_and_pulls_no_signal_line(void) {
     board_t *board = open_board();
 
     const uint8_t driven = board_port_directions(board, 'A') | board_port_directions(board, 'B') |
                            board_port_directions(board, 'D');
 
-    const uint8_t pulled_b = board_port_levels(board, 'B') & CONDITION_PIN_BITS;
-    const uint8_t pulled_d = board_port_levels(board, 'D') & WRITE_DATA_PIN_BIT;
+    const uint8_t pulled = (board_port_levels(board, 'A') & SIGNAL_PIN_BITS_A) |
+                           (board_port_levels(board, 'B') & SIGNAL_PIN_BITS_B) |
+                           (board_port_levels(board, 'D') & WRITE_DATA_PIN_BIT_D);
     board_close(board);
     CHECK(driven == 0);
-    CHECK(pulled_b == 0);
-    CHECK(pulled_d == 0);
+    CHECK(pulled == 0);
     return true;
 }
 
@@ -275,7 +279,7 @@ static const test_case_t TESTS[] = {
     TEST_CASE(heads_release_when_ready_drops),
     TEST_CASE(one_head_engages_when_write_gate_opens),
     TEST_CASE(heads_end_released_after_write_gate_glitch),
-    TEST_CASE(startup_drives_no_pin_and_pulls_no_input_line),
+    TEST_CASE(startup_drives_no_pin_and_pulls_no_signal_line),
     TEST_CASE(clock_is_undivided_and_watchdog_is_armed),
     TEST_CASE(long_write_never_trips_the_watchdog),
 };

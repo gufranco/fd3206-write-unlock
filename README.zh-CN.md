@@ -1,16 +1,139 @@
-# fdswriteunlock
+<div align="center">
+
+<h1>fdswriteunlock</h1>
 
 [English](README.md) | [日本語](README.ja.md) | 简体中文 | [繁體中文（香港）](README.zh-HK.md)
 
-这是一款 ATtiny2313A 固件。芯片叠焊在 Famicom 磁碟机（Famicom Disk System）驱动器中三美（Mitsumi）FD3206P 控制器的上方，由它代替控制器完成写入级的工作，使驱动器可以改写整张磁盘，而驱动机构电路板上无需切断任何线路，也无需添加其他元件。
+<br>
 
-**概要：** 驱动器最多可能有两处写入锁定。FD3206P 控制器这一处由本芯片解除：为 ATtiny2313A 烧录固件，将它 1 脚对 1 脚叠放在 FD3206P 上，把 ATtiny 的 4、5、6、10、13、14、15、20 脚焊到正下方的引脚上，其余引脚剪掉。电源板需要另行处理，且只针对带有锁定电路的版本：FMD-POWER-04、-05、部分 -02，以及夏普 Twin Famicom AN-500。固件采用 C17 编写，对 MISRA C:2012 零偏离，遵循 NASA Power of 10 规则，所有寄存器访问都集中在一个小型汇编模块中，并在版本固定的 Docker 工具链中构建；主机单元测试的行覆盖率与分支覆盖率均为 100%，13 个仿真场景执行了固件的每一条指令。目前尚未在真实驱动器上运行过。
+<strong>在 FD3206P 上方焊一颗 ATtiny2313A，Famicom 磁碟机的驱动器就能重新改写整张磁盘。</strong>
 
-## 驱动器为何拒绝整盘写入
+<br>
+<br>
 
-1988 年末以后生产的驱动器用 FD3206P 控制器取代了早期的 FD7201P。FD3206P 允许 RAM 适配器改写单个文件，但一旦检测到对整个盘面的写入，就会释放写入磁头，RAM 适配器随即报告错误 26。FD7201P 驱动器没有这一行为，也不需要本芯片。
+[![CI](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gufranco/fdswriteunlock)](https://github.com/gufranco/fdswriteunlock/releases/latest)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/gufranco/fdswriteunlock/badge)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fdswriteunlock)
+[![MISRA C:2012](https://img.shields.io/badge/MISRA%20C%3A2012-0%20findings-brightgreen)](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-## 两块电路板，两处锁定
+</div>
+
+<p align="center">
+  <a href="#安装">安装</a> &nbsp;|&nbsp;
+  <a href="#工作原理">工作原理</a> &nbsp;|&nbsp;
+  <a href="#电源板">电源板</a> &nbsp;|&nbsp;
+  <a href="https://github.com/gufranco/fdswriteunlock/releases">发布版本</a> &nbsp;|&nbsp;
+  <a href="#常见问题">常见问题</a>
+</p>
+
+<p align="center">
+<b>8</b> 个焊点 · <b>0</b> 处切线 · <b>0</b> 个额外元件 · <b>226</b> 字节闪存 · <b>15</b> 条指令的边沿中断 · <b>0</b> 项 MISRA C:2012 问题 · <b>13</b> 个仿真场景
+</p>
+
+---
+
+```text
+ATtiny2313A, pin 1 over FD3206P pin 1
+  solder  4 5 6 10 13 14 15 20
+  clip    1 2 3 7 8 9 11 12 16 17 18 19
+```
+
+> [!IMPORTANT]
+> 固件已通过主机测试、静态分析和仿真的全部检查，但尚未在真实驱动器上运行过。第一次写入请使用坏了也无所谓的磁盘。
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**不切线，不加线**<br>
+只需把 8 个引脚直接焊在 FD3206P 上。驱动器电路板不切断任何线路，也不添加电阻、跳线或第二颗芯片。
+
+</td>
+<td width="50%" valign="top">
+
+**只拉低，不驱动为高**<br>
+磁头引脚要么输出 0，要么为输入，因此不会与共用该引脚的 FD3206P 短路。
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**1.25 us 切换磁头**<br>
+15 条指令的汇编中断在 WRITE DATA 每个边沿后 10 个周期切换磁头，远低于 4.7 us 的最短边沿间隔。
+
+</td>
+<td width="50%" valign="top">
+
+**零 MISRA 问题**<br>
+C17 代码在调试版和正式版中均按 MISRA C:2012 检查，所有寄存器访问都隔离在一个汇编模块中。
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**每条指令都被执行**<br>
+13 个 simavr 场景运行正式版映像，只要有一条固件指令未被执行就判为失败；逻辑还针对全部 65,536 种端口组合进行了检查。
+
+</td>
+<td width="50%" valign="top">
+
+**发布的就是测试过的二进制**<br>
+每个 GitHub 发布版本都附有流水线构建并测试过的同一个 hex 及其 SHA-256。
+
+</td>
+</tr>
+</table>
+
+## 问题
+
+1988 年末以后生产的驱动器用三美 FD3206P 控制器取代了早期的 FD7201P。它允许 RAM 适配器改写单个文件，但写入一旦覆盖整个盘面，就会立即释放写入磁头，RAM 适配器随即报告错误 26。在这样的驱动器上，无法备份或恢复整张磁盘。
+
+## 解决方案
+
+经典做法是在控制器之外重建驱动器的写入级：一个在 WRITE DATA 每个下降沿翻转的触发器，以及一个只在 /READY、/WRITE PROTECT 和 /WRITE GATE 全为低电平时才驱动一个磁头的门控。本固件就是这个写入级，放在叠焊于控制器之上的芯片里。
+
+| | 本固件 | GAL16V8 改造芯片 | 经典接线改造 |
+|:--|:--:|:--:|:--:|
+| 新增元件 | 1 颗芯片 | 1 颗芯片 | 74LS76 与 74LS45 |
+| 驱动器电路板切线 | 无 | 无 | 2 处 |
+| 额外连线 | 无 | 1 根，1 脚到 19 脚 | 多根 |
+| 磁头引脚 | 只拉低 | 双向驱动 | 集电极开路 |
+| 两者同时写入的单文件存档 | 不会短路 | 可能与控制器对冲 | 不受影响，控制器已被断开 |
+| 源代码与测试 | MIT，经过仿真，符合 MISRA | 开源版本提供 CUPL 源代码 | 原理图 |
+
+## 工作原理
+
+```mermaid
+graph LR
+    RAM[RAM 适配器] --> PWR[电源板]
+    PWR -->|WRITE DATA、/WRITE GATE、/READY、/WRITE PROTECT| FD[FD3206P 控制器]
+    PWR -->|相同信号，相同引脚| AT[叠在上方的 ATtiny2313A]
+    FD -->|整盘写入时释放磁头| HEADS[写入磁头 1 与 2]
+    AT -->|每个触发器状态拉低一个磁头| HEADS
+```
+
+与经典写入改造的逻辑相同：一个在 WRITE DATA 每个下降沿翻转状态的触发器，以及一个只在 /READY、/WRITE PROTECT 和 /WRITE GATE 全为低电平时才允许驱动一个磁头的门控。
+
+- **边沿中断。** WRITE DATA 接到 6 脚，即 ATtiny 的 INT0。一段 15 条指令的汇编处理程序先把下一个磁头状态写入端口，再交换两个为下一个边沿预先算好的值。它不改动标志位，也不触及 C 代码的状态。
+- **门控。** 主循环通过一次调用读取三个条件并喂看门狗。条件变化时，重新计算中断处理程序要交换的两个值，并在这几条指令期间关闭中断。
+- **只拉低，从不驱动为高。** 磁头引脚要么是输出 0，要么是输入。被释放的磁头由驱动器自身的上拉电阻保持高电平，这与原电路中集电极开路的译码器行为一致。FD3206P 与这两个引脚共用，而只会拉低的引脚不会与它短路。
+- **看门狗。** 60 ms。复位后所有引脚都变为输入，两个磁头都被释放。
+
+8 MHz 下的时序：
+
+| 项目 | 数值 | 依据 |
+|---|---|---|
+| 从响应中断到写入磁头 | 10 个周期，1.25 us | 处理程序的指令计数 |
+| 整个处理程序 | 约 30 个周期，3.75 us | 指令计数，低于 4.7 us 的最短边沿间隔 |
+| 各边沿之间的抖动 | 视正在执行的指令而定，最多 2 个周期，250 ns | AVR 中断响应 |
+| 从门控变化到磁头释放或接通 | 小于 10 us | 仿真上限 |
+
+驱动器以 96.4 kHz 记录，每位 10.4 us。250 ns 的抖动是一位的 2.4%。门控变化发生在块与块之间至少 480 位的间隙内，因此几微秒的门控延迟只会让间隙略短或略长。
+
+## 电源板
 
 驱动器，即 HVC-022 或夏普 Twin Famicom 内置的驱动器，内有两块电路板：
 
@@ -21,7 +144,9 @@
 
 只有两处锁定都解除后，驱动器才能整盘写入。FD7201P 驱动器不需要芯片，但仍可能需要改造电源板。配备 FMD-POWER-01 电源板的 FD3206P 驱动器只需要芯片。本项目"不切断线路"的原则只针对驱动机构电路板；电源板的锁定电路位于另一块电路板的上游，叠放在 FD3206P 上的芯片无法触及。
 
-## 第 1 步：确认电源板版本
+## 安装
+
+### 第 1 步：确认电源板版本
 
 1. 拧下主机底部的 6 颗十字螺丝。
 2. 将主机翻过来，小心取下上盖。
@@ -40,11 +165,11 @@
 | FMD-POWER-04 | 有 | 第 2b 步 |
 | FMD-POWER-05 | 有 | 第 2c 步 |
 
-## 第 2 步：解除电源板的写入锁定
+### 第 2 步：解除电源板的写入锁定
 
 Famicom World 的文章 [FDS Power Board Modifications](https://famicomworld.com/workshop/tech/fds-power-board-modifications/) 提供了每种电路板的照片，并标出了准确的操作位置。以下步骤说明每项改动的内容；具体在您的电路板上的位置请参照文章中的照片。
 
-### 2a. 带子板的 FMD-POWER-02
+#### 2a. 带子板的 FMD-POWER-02
 
 1. 拆焊并取下绿色子板。
 2. 清除留下的孔中的焊锡。
@@ -53,20 +178,20 @@ Famicom World 的文章 [FDS Power Board Modifications](https://famicomworld.com
 
 完成后，电路板与无锁定的 -02 相同。
 
-### 2b. FMD-POWER-04
+#### 2b. FMD-POWER-04
 
 1. 拆焊或剪掉标有 JP14 的元件。这会使锁定电路失效。
 2. 用一段短导线连接文章中标为 A 和 B 的两点；如果周围没有其他元件，也可以用焊锡桥接。这样写入信号就能绕过已失效的电路到达驱动机构。
 
 这块电路板无需切断铜箔。
 
-### 2c. FMD-POWER-05
+#### 2c. FMD-POWER-05
 
 1. 拆焊文章中标出的两根跳线。其中一根位于 RAM 适配器连接处附近两个黑色方形元件的下方；把这两个元件向外轻轻扳开即可够到。
 2. 切断文章中用红色标出的两条铜箔。用万用表确认切口两侧已完全不导通。
 3. 焊上文章中用蓝色标出的两条连线。它们把写入信号重新送回驱动机构。
 
-### 2d. 夏普 Twin Famicom
+#### 2d. 夏普 Twin Famicom
 
 Twin Famicom 使用相同的三美驱动机构，搭载 FD7201P 或 FD3206P，但电源板是夏普自己的设计，因此 FMD-POWER 表不适用。它的锁定通过两根导线解除，而不需要改造电路板。
 
@@ -84,23 +209,27 @@ Twin Famicom 使用相同的三美驱动机构，搭载 FD7201P 或 FD3206P，�
 | 所有搭载 FD3206P 驱动器的 Twin Famicom | 两根导线改造后 FD3206P 的锁定仍在，因此还需要本芯片 |
 | AN-505 | 2026-09-03 的一篇帖子转述了 Discord 上的讨论，称该机型没有锁定；没有照片或测试佐证 |
 
-## 第 3 步：烧录芯片
+### 第 3 步：烧录芯片
 
-每个 GitHub 发布版本都附有 `fdswriteunlock.hex`，即流水线构建并测试过的同一映像，以及它的 SHA-256。先用 `sha256sum -c fdswriteunlock.hex.sha256` 校验，再用 `make fuses` 写入熔丝，并用 `avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i` 烧录；也可以按下文自行构建同一映像。
+| 工具 | 用途 | 获取方式 |
+|:--|:--|:--|
+| `avrdude` | 写入熔丝和闪存 | macOS 上 `brew install avrdude`，Debian 上 `apt install avrdude` |
+| USBasp，或运行 ArduinoISP 的 Arduino Uno 或 Nano | 编程器 | 从 Arduino IDE 示例中烧录 ArduinoISP |
+| Docker 与 Python 3 | 仅在自行构建固件时需要 | [docker.com](https://www.docker.com) |
 
-所有构建都在 Docker 中进行，主机只需要 Docker 和 Python 3。烧录在主机上用 `avrdude` 完成，macOS 上用 `brew install avrdude` 安装，Debian 上用 `apt install avrdude` 安装。
+每个[发布版本](https://github.com/gufranco/fdswriteunlock/releases)都附有 `fdswriteunlock.hex`，即流水线构建并测试过的同一映像，以及它的 SHA-256：
 
 ```sh
-make
+sha256sum -c fdswriteunlock.hex.sha256
 make fuses PROGRAMMER=usbasp
-make flash PROGRAMMER=usbasp
+avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i
 ```
 
-如果用 Arduino Uno 或 Nano 作为编程器，请先通过 Arduino IDE 把 ArduinoISP 示例程序烧录到 Arduino，再将其与 ATtiny2313A 连线，并指定 `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`。Arduino IDE 只用于烧录 Arduino 本身；ATtiny 固件从不在 IDE 中构建，因此每颗芯片烧录的都是通过了 MISRA 检查、测试和仿真的映像。每个发布版本都附有由发布流水线构建的该映像。
+如需自行构建同一映像，`make` 会在版本固定的 Docker 工具链中构建，`make flash PROGRAMMER=usbasp` 负责烧录。用 Arduino 作编程器时，指定 `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`。
 
 熔丝设置为：低位 `0xE4`，内部 8 MHz 振荡器，无时钟输出；高位 `0xD9`，4.3 V 掉电复位，保留编程功能。新芯片以 8 分频的 4 MHz 振荡器运行；固件在启动时把分频系数设为 1，因此未设置熔丝的芯片也能以 4 MHz 工作，但边沿抖动会加倍，且没有掉电保护。
 
-## 第 4 步：安装芯片，仅限 FD3206P 驱动器
+### 第 4 步：安装芯片，仅限 FD3206P 驱动器
 
 驱动机构上唯一新增的元件，就是焊在 FD3206P 上方、已烧录好的 ATtiny2313A。这块电路板上不切断任何线路，也不添加导线。ATtiny4313 引脚排列相同，可运行同一固件。
 
@@ -124,7 +253,7 @@ make flash PROGRAMMER=usbasp
 
 首次写入之前，请测量两个磁头的上拉电阻。磁头被拉低时，ATtiny 吸入的电流等于 5 V 除以该电阻值，不得超过每个引脚 20 mA 的额定值，即上拉电阻须不小于 250 Ω。当 FD3206P 驱动同一磁头时，会分担这部分电流。
 
-## 第 5 步：在驱动器上测试
+### 第 5 步：在驱动器上测试
 
 请使用一张坏了也无所谓的磁盘。
 
@@ -133,26 +262,6 @@ make flash PROGRAMMER=usbasp
 3. 用逻辑分析仪比较 6 脚的 WRITE DATA 与 14、15 脚。每个下降沿都会使低电平从一个引脚移到另一个引脚。
 
 如果整盘写入仍然失败，请检查写入期间 WRITE DATA 和 /WRITE GATE 是否到达 FD3206P 的 6 脚和 4 脚。如果没有到达，说明电源板仍在芯片上游阻断写入信号。
-
-## 固件的工作原理
-
-与经典写入改造的逻辑相同：一个在 WRITE DATA 每个下降沿翻转状态的触发器，以及一个只在 /READY、/WRITE PROTECT 和 /WRITE GATE 全为低电平时才允许驱动一个磁头的门控。
-
-- **边沿中断。** WRITE DATA 接到 6 脚，即 ATtiny 的 INT0。一段 15 条指令的汇编处理程序先把下一个磁头状态写入端口，再交换两个为下一个边沿预先算好的值。它不改动标志位，也不触及 C 代码的状态。
-- **门控。** 主循环读取三个条件。条件变化时，重新计算中断处理程序要交换的两个值，并在这几条指令期间关闭中断。其余时间只负责喂看门狗。
-- **只拉低，从不驱动为高。** 磁头引脚要么是输出 0，要么是输入。被释放的磁头由驱动器自身的上拉电阻保持高电平，这与原电路中集电极开路的译码器行为一致。FD3206P 与这两个引脚共用，而只会拉低的引脚不会与它短路。
-- **看门狗。** 60 ms。复位后所有引脚都变为输入，两个磁头都被释放。
-
-8 MHz 下的时序：
-
-| 项目 | 数值 | 依据 |
-|---|---|---|
-| 从响应中断到写入磁头 | 10 个周期，1.25 us | 处理程序的指令计数 |
-| 整个处理程序 | 约 30 个周期，3.75 us | 指令计数，低于 4.7 us 的最短边沿间隔 |
-| 各边沿之间的抖动 | 视正在执行的指令而定，最多 2 个周期，250 ns | AVR 中断响应 |
-| 从门控变化到磁头释放或接通 | 小于 10 us | 仿真上限 |
-
-驱动器以 96.4 kHz 记录，每位 10.4 us。250 ns 的抖动是一位的 2.4%。门控变化发生在块与块之间至少 480 位的间隙内，因此几微秒的门控延迟只会让间隙略短或略长。
 
 ## 行为要求
 
@@ -174,12 +283,6 @@ make flash PROGRAMMER=usbasp
 
 保存单个文件时，FD3206P 仍会用自己的触发器驱动同样的两个引脚进行写入。如果两个触发器的状态不一致，两个磁头会同时被拉低。叠放在这颗芯片上的经典 GAL 改造芯片也有同样的问题，而且还会把引脚驱动为高电平；本固件至少不会与控制器短路。存档是否受影响，只能在真实驱动器上确认。能彻底消除这一问题的，是经典接线改造中切断两条铜箔的做法，而本项目刻意不要求这样做。
 
-## 与 GAL 改造芯片的比较
-
-开源项目 FDS-FD3206-Modchip 的 GAL16V8 改造芯片会翘起 1 脚和 19 脚，并用一段短导线连接。寄存器模式下的 GAL 只能从 1 脚的上升沿获取触发器时钟，而驱动器是在 WRITE DATA 的下降沿翻转，因此 GAL 把 WRITE DATA 反相后从输出脚 19 送出，再接回自己的时钟脚。这两个引脚都不是复位脚。市售的"FD3206 Add-On Chip V4"在出售时磨掉了芯片标记，但其安装照片显示了同样的 1 脚到 19 脚跳线和 8 个焊点，因此很可能是同一种 GAL 设计；这是根据照片作出的推断，型号未经证实。
-
-ATtiny 不需要这种回接：6 脚的 INT0 直接在下降沿触发中断，1 脚和 19 脚都剪掉。两种方案焊接的 8 个引脚相同，也都无法解除电源板的锁定。
-
 ## 数据
 
 <!-- figures:begin -->
@@ -191,6 +294,63 @@ ATtiny 不需要这种回接：6 脚的 INT0 直接在下降沿触发中断，1 
 <!-- figures:end -->
 
 数值取自正式版构建。
+
+## 常见问题
+
+<details>
+<summary><strong>我的驱动器需要它吗？</strong></summary>
+<br>
+
+只有控制器是 FD3206P 时才需要。打开驱动机构，查看控制器电路板上那颗大芯片的型号。FD7201P 没有控制器锁定，但其电源板仍可能需要安装第 2 步的改造。
+
+</details>
+
+<details>
+<summary><strong>为什么不用 ATtiny85 等 8 脚芯片？</strong></summary>
+<br>
+
+写入级需要 6 个 I/O：WRITE DATA、三个条件和两个磁头。8 脚的 ATtiny 在不放弃 RESET 的情况下只有 5 个，而放弃 RESET 就无法在线编程。此外只有 x313 的 GND、VCC 和 INT0 恰好位于 FD3206P 的 GND、+5 V 和 WRITE DATA 的位置，这正是能够叠焊安装的原因。
+
+</details>
+
+<details>
+<summary><strong>"V4" 改造芯片上翘起的两个引脚是什么？</strong></summary>
+<br>
+
+是 1 脚和 19 脚，用一根导线相连。寄存器模式下的 GAL16V8 只能从 1 脚的上升沿获取触发器时钟，而驱动器在 WRITE DATA 的下降沿翻转，因此 GAL 把 WRITE DATA 反相后从输出脚 19 送出，再接回自己的时钟脚。两者都不是复位脚。市售的"FD3206 Add-On Chip V4"出售时磨掉了芯片标记，但其安装照片显示了同样的跳线，因此很可能是同一种 GAL 设计；这是根据照片作出的推断。ATtiny 不需要这种回接，INT0 直接在下降沿触发中断。
+
+</details>
+
+<details>
+<summary><strong>能用 Arduino IDE 构建吗？</strong></summary>
+<br>
+
+不能。Arduino IDE 只用于烧录充当 ISP 编程器的 Arduino。固件在版本固定的工具链中构建，确保每颗芯片烧录的都是通过了 MISRA 检查、测试和仿真的映像。
+
+</details>
+
+<details>
+<summary><strong>能用于夏普 Twin Famicom 吗？</strong></summary>
+<br>
+
+Twin Famicom 使用相同的三美驱动机构，因此搭载 FD3206P 的机器可以同样安装本芯片。它的电源板有自己的锁定，通过连接两根灰色导线解除，参见安装第 2d 步。
+
+</details>
+
+## 版本管理
+
+发布版本遵循[语义化版本](https://semver.org/)，在流水线通过后由 `main` 自动生成。每个[发布版本](https://github.com/gufranco/fdswriteunlock/releases)都附有发布说明、固件 hex 及其 SHA-256，hex 还带有经过签名的构建来源证明：
+
+```sh
+gh attestation verify fdswriteunlock.hex --repo gufranco/fdswriteunlock
+```
+
+## 支持
+
+| 需求 | 渠道 |
+|:--|:--|
+| 缺陷报告或实机结果 | [GitHub Issues](https://github.com/gufranco/fdswriteunlock/issues) |
+| 安全问题报告 | [安全政策](SECURITY.md) |
 
 ## 来源
 
@@ -211,4 +371,4 @@ Stephen-Arsenault/FDS-FD3206-Modchip（CC BY-SA 4.0）在同一控制器上叠�
 
 ## 许可证
 
-MIT。参见 [`LICENSE`](LICENSE)。
+[MIT](LICENSE)

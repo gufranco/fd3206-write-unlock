@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>fdswriteunlock</h1>
+<h1>fd3206-write-unlock</h1>
 
 English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文（香港）](README.zh-HK.md)
 
@@ -11,10 +11,10 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
 <br>
 <br>
 
-[![CI](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/gufranco/fdswriteunlock)](https://github.com/gufranco/fdswriteunlock/releases/latest)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/gufranco/fdswriteunlock/badge)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fdswriteunlock)
-[![MISRA C:2012](https://img.shields.io/badge/MISRA%20C%3A2012-0%20findings-brightgreen)](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml)
+[![CI](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/gufranco/fd3206-write-unlock/badge)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fd3206-write-unlock)
+[![MISRA C:2012](https://img.shields.io/badge/MISRA%20C%3A2012-0%20findings-brightgreen)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 </div>
@@ -23,7 +23,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
   <a href="#install">Install</a> &nbsp;|&nbsp;
   <a href="#how-it-works">How it works</a> &nbsp;|&nbsp;
   <a href="#power-board">Power board</a> &nbsp;|&nbsp;
-  <a href="https://github.com/gufranco/fdswriteunlock/releases">Releases</a> &nbsp;|&nbsp;
+  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">Releases</a> &nbsp;|&nbsp;
   <a href="#faq">FAQ</a>
 </p>
 
@@ -218,12 +218,12 @@ Reports on the nesdev forum `(as of 2026-09)`:
 | A USBasp, or an Arduino Uno or Nano running ArduinoISP | the programmer | load ArduinoISP from the Arduino IDE examples |
 | Docker and Python 3 | only to build the firmware yourself | [docker.com](https://www.docker.com) |
 
-Every [release](https://github.com/gufranco/fdswriteunlock/releases) attaches `fdswriteunlock.hex`, the exact image the pipeline built and tested, with its SHA-256:
+Every [release](https://github.com/gufranco/fd3206-write-unlock/releases) attaches `fd3206-write-unlock.hex`, the exact image the pipeline built and tested, with its SHA-256:
 
 ```sh
-sha256sum -c fdswriteunlock.hex.sha256
+sha256sum -c fd3206-write-unlock.hex.sha256
 make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock.hex:i
 ```
 
 To build the same image yourself, `make` builds it in a pinned Docker toolchain and `make flash PROGRAMMER=usbasp` writes it. With an Arduino as the programmer, pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`.
@@ -338,17 +338,17 @@ The Twin Famicom uses the same Mitsumi drive mechanism, so an FD3206P unit takes
 
 ## Versioning
 
-Releases follow [Semantic Versioning](https://semver.org/) and are cut automatically from `main` after the pipeline passes. Every [release](https://github.com/gufranco/fdswriteunlock/releases) carries its notes, the firmware hex, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX software bill of materials attested to the same hex. Provenance comes from GitHub-hosted runners through the release workflow, which meets SLSA Build Level 2. Verify a download with:
+Releases follow [Semantic Versioning](https://semver.org/) and are cut automatically from `main` after the pipeline passes. Every [release](https://github.com/gufranco/fd3206-write-unlock/releases) carries its notes, the firmware hex, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX software bill of materials attested to the same hex. Provenance comes from GitHub-hosted runners through the release workflow, which meets SLSA Build Level 2. Verify a download with:
 
 ```sh
-gh attestation verify fdswriteunlock.hex --repo gufranco/fdswriteunlock
+gh attestation verify fd3206-write-unlock.hex --repo gufranco/fd3206-write-unlock
 ```
 
 ## Support
 
 | Need | Where |
 |:--|:--|
-| Bug report or hardware result | [GitHub Issues](https://github.com/gufranco/fdswriteunlock/issues) |
+| Bug report or hardware result | [GitHub Issues](https://github.com/gufranco/fd3206-write-unlock/issues) |
 | Security report | [Security policy](SECURITY.md) |
 
 ## Provenance

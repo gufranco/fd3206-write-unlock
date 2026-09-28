@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE_INPUTS = ("Dockerfile", "docker/requirements-tools.txt")
-IMAGE_NAME = "fdswriteunlock-toolchain"
+IMAGE_NAME = "fd3206-write-unlock-toolchain"
 TAG_LENGTH = 12
 
 

@@ -32,7 +32,7 @@ class ImageTagTest(unittest.TestCase):
         tag = docker_make.image_tag(root)
 
         name, digest = tag.split(":")
-        self.assertEqual(name, "fdswriteunlock-toolchain")
+        self.assertEqual(name, "fd3206-write-unlock-toolchain")
         self.assertEqual(len(digest), 12)
 
     def test_tag_changes_when_the_dockerfile_changes(self) -> None:

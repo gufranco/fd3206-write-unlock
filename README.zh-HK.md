@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>fdswriteunlock</h1>
+<h1>fd3206-write-unlock</h1>
 
 [English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | 繁體中文（香港）
 
@@ -11,10 +11,10 @@
 <br>
 <br>
 
-[![CI](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/gufranco/fdswriteunlock)](https://github.com/gufranco/fdswriteunlock/releases/latest)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/gufranco/fdswriteunlock/badge)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fdswriteunlock)
-[![MISRA C:2012](https://img.shields.io/badge/MISRA%20C%3A2012-0%20findings-brightgreen)](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml)
+[![CI](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/gufranco/fd3206-write-unlock/badge)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fd3206-write-unlock)
+[![MISRA C:2012](https://img.shields.io/badge/MISRA%20C%3A2012-0%20findings-brightgreen)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 </div>
@@ -23,7 +23,7 @@
   <a href="#安裝">安裝</a> &nbsp;|&nbsp;
   <a href="#運作原理">運作原理</a> &nbsp;|&nbsp;
   <a href="#電源板">電源板</a> &nbsp;|&nbsp;
-  <a href="https://github.com/gufranco/fdswriteunlock/releases">發佈版本</a> &nbsp;|&nbsp;
+  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">發佈版本</a> &nbsp;|&nbsp;
   <a href="#常見問題">常見問題</a>
 </p>
 
@@ -217,12 +217,12 @@ Twin Famicom 使用相同的三美驅動機構，配備 FD7201P 或 FD3206P，�
 | USBasp，或運行 ArduinoISP 的 Arduino Uno 或 Nano | 燒錄器 | 從 Arduino IDE 範例燒錄 ArduinoISP |
 | Docker 與 Python 3 | 只在自行建置韌體時需要 | [docker.com](https://www.docker.com) |
 
-每個[發佈版本](https://github.com/gufranco/fdswriteunlock/releases)都附有 `fdswriteunlock.hex`，即流水線建置並測試過的同一映像，以及它的 SHA-256：
+每個[發佈版本](https://github.com/gufranco/fd3206-write-unlock/releases)都附有 `fd3206-write-unlock.hex`，即流水線建置並測試過的同一映像，以及它的 SHA-256：
 
 ```sh
-sha256sum -c fdswriteunlock.hex.sha256
+sha256sum -c fd3206-write-unlock.hex.sha256
 make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock.hex:i
 ```
 
 如要自行建置同一映像，`make` 會在版本固定的 Docker 工具鏈中建置，`make flash PROGRAMMER=usbasp` 負責燒錄。用 Arduino 作燒錄器時，指定 `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`。
@@ -339,17 +339,17 @@ Twin Famicom 使用相同的三美驅動機構，因此配備 FD3206P 的機器�
 
 ## 版本管理
 
-發佈版本遵循[語義化版本](https://semver.org/)，在流水線通過後由 `main` 自動產生。每個[發佈版本](https://github.com/gufranco/fdswriteunlock/releases)都附有發佈說明、韌體 hex、其 SHA-256、已簽署建置來源的 Sigstore 證明包，以及與同一 hex 綁定證明的 SPDX 軟件物料清單。來源證明由發佈工作流程在 GitHub 託管的執行器上產生，符合 SLSA Build Level 2。下載後可用以下指令核對：
+發佈版本遵循[語義化版本](https://semver.org/)，在流水線通過後由 `main` 自動產生。每個[發佈版本](https://github.com/gufranco/fd3206-write-unlock/releases)都附有發佈說明、韌體 hex、其 SHA-256、已簽署建置來源的 Sigstore 證明包，以及與同一 hex 綁定證明的 SPDX 軟件物料清單。來源證明由發佈工作流程在 GitHub 託管的執行器上產生，符合 SLSA Build Level 2。下載後可用以下指令核對：
 
 ```sh
-gh attestation verify fdswriteunlock.hex --repo gufranco/fdswriteunlock
+gh attestation verify fd3206-write-unlock.hex --repo gufranco/fd3206-write-unlock
 ```
 
 ## 支援
 
 | 需要 | 渠道 |
 |:--|:--|
-| 錯誤報告或實機結果 | [GitHub Issues](https://github.com/gufranco/fdswriteunlock/issues) |
+| 錯誤報告或實機結果 | [GitHub Issues](https://github.com/gufranco/fd3206-write-unlock/issues) |
 | 保安問題報告 | [保安政策](SECURITY.md) |
 
 ## 來源

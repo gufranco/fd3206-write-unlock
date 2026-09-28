@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>fdswriteunlock</h1>
+<h1>fd3206-write-unlock</h1>
 
 [English](README.md) | 日本語 | [简体中文](README.zh-CN.md) | [繁體中文（香港）](README.zh-HK.md)
 
@@ -11,10 +11,10 @@
 <br>
 <br>
 
-[![CI](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/gufranco/fdswriteunlock)](https://github.com/gufranco/fdswriteunlock/releases/latest)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/gufranco/fdswriteunlock/badge)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fdswriteunlock)
-[![MISRA C:2012](https://img.shields.io/badge/MISRA%20C%3A2012-0%20findings-brightgreen)](https://github.com/gufranco/fdswriteunlock/actions/workflows/ci.yml)
+[![CI](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/gufranco/fd3206-write-unlock/badge)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fd3206-write-unlock)
+[![MISRA C:2012](https://img.shields.io/badge/MISRA%20C%3A2012-0%20findings-brightgreen)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 </div>
@@ -23,7 +23,7 @@
   <a href="#取り付け">取り付け</a> &nbsp;|&nbsp;
   <a href="#仕組み">仕組み</a> &nbsp;|&nbsp;
   <a href="#電源基板">電源基板</a> &nbsp;|&nbsp;
-  <a href="https://github.com/gufranco/fdswriteunlock/releases">リリース</a> &nbsp;|&nbsp;
+  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">リリース</a> &nbsp;|&nbsp;
   <a href="#よくある質問">よくある質問</a>
 </p>
 
@@ -217,12 +217,12 @@ Famicom World の記事 [FDS Power Board Modifications](https://famicomworld.com
 | USBasp、または ArduinoISP を書き込んだ Arduino Uno か Nano | 書き込み器 | Arduino IDE のスケッチ例から ArduinoISP を書き込む |
 | Docker と Python 3 | ファームウェアを自分でビルドする場合のみ | [docker.com](https://www.docker.com) |
 
-各[リリース](https://github.com/gufranco/fdswriteunlock/releases)には、パイプラインがビルドしてテストしたイメージそのものである `fdswriteunlock.hex` と、その SHA-256 が添付されています。
+各[リリース](https://github.com/gufranco/fd3206-write-unlock/releases)には、パイプラインがビルドしてテストしたイメージそのものである `fd3206-write-unlock.hex` と、その SHA-256 が添付されています。
 
 ```sh
-sha256sum -c fdswriteunlock.hex.sha256
+sha256sum -c fd3206-write-unlock.hex.sha256
 make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock.hex:i
 ```
 
 同じイメージを自分でビルドする場合は、`make` がバージョン固定の Docker ツールチェーンでビルドし、`make flash PROGRAMMER=usbasp` で書き込みます。Arduino を書き込み器にする場合は `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX` を指定します。
@@ -339,17 +339,17 @@ avrdude -c usbasp -p t2313a -U flash:w:fdswriteunlock.hex:i
 
 ## バージョン管理
 
-リリースは [Semantic Versioning](https://semver.org/) に従い、パイプラインが通った後に `main` から自動で作られます。各[リリース](https://github.com/gufranco/fdswriteunlock/releases)にはリリースノート、ファームウェアの hex、その SHA-256、署名付きビルド来歴の Sigstore バンドル、同じ hex に証明を結び付けた SPDX 形式のソフトウェア部品表が付きます。来歴は GitHub ホストのランナー上でリリース用ワークフローが作成し、SLSA Build Level 2 を満たします。ダウンロードしたファイルは次のコマンドで検証できます。
+リリースは [Semantic Versioning](https://semver.org/) に従い、パイプラインが通った後に `main` から自動で作られます。各[リリース](https://github.com/gufranco/fd3206-write-unlock/releases)にはリリースノート、ファームウェアの hex、その SHA-256、署名付きビルド来歴の Sigstore バンドル、同じ hex に証明を結び付けた SPDX 形式のソフトウェア部品表が付きます。来歴は GitHub ホストのランナー上でリリース用ワークフローが作成し、SLSA Build Level 2 を満たします。ダウンロードしたファイルは次のコマンドで検証できます。
 
 ```sh
-gh attestation verify fdswriteunlock.hex --repo gufranco/fdswriteunlock
+gh attestation verify fd3206-write-unlock.hex --repo gufranco/fd3206-write-unlock
 ```
 
 ## サポート
 
 | 用件 | 窓口 |
 |:--|:--|
-| 不具合報告、実機での結果 | [GitHub Issues](https://github.com/gufranco/fdswriteunlock/issues) |
+| 不具合報告、実機での結果 | [GitHub Issues](https://github.com/gufranco/fd3206-write-unlock/issues) |
 | セキュリティの報告 | [セキュリティポリシー](SECURITY.md) |
 
 ## 出典

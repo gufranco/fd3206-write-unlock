@@ -1,5 +1,5 @@
 {
-  "name": "fdswriteunlock-release-tooling",
+  "name": "fd3206-write-unlock-release-tooling",
   "version": "0.0.0-managed-by-semantic-release",
   "private": true,
   "description": "Release tooling only. The firmware is C, built in Docker, and attached to each GitHub release.",

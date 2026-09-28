@@ -1,8 +1,8 @@
 /* SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com> */
 /* SPDX-License-Identifier: MIT */
 
-#ifndef FDSWRITEUNLOCK_TEST_BOARD_H
-#define FDSWRITEUNLOCK_TEST_BOARD_H
+#ifndef FD3206_WRITE_UNLOCK_TEST_BOARD_H
+#define FD3206_WRITE_UNLOCK_TEST_BOARD_H
 
 #include <stdbool.h>
 #include <stdint.h>

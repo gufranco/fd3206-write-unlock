@@ -56,7 +56,7 @@ jobs:
         if: steps.verify.outputs.proceed == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: fdswriteunlock-hex
+          name: fd3206-write-unlock-hex
           path: ${{ runner.temp }}/ci-artifact
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -67,19 +67,19 @@ jobs:
           ARTIFACT_DIR: ${{ runner.temp }}/ci-artifact
         run: |
           set -euo pipefail
-          python3 tools/check_hex.py "$ARTIFACT_DIR/fdswriteunlock.hex" --max-bytes 2048
+          python3 tools/check_hex.py "$ARTIFACT_DIR/fd3206-write-unlock.hex" --max-bytes 2048
           mkdir -p dist
-          cp "$ARTIFACT_DIR/fdswriteunlock.hex" dist/fdswriteunlock.hex
+          cp "$ARTIFACT_DIR/fd3206-write-unlock.hex" dist/fd3206-write-unlock.hex
           cd dist
-          sha256sum fdswriteunlock.hex > fdswriteunlock.hex.sha256
-          cat fdswriteunlock.hex.sha256
+          sha256sum fd3206-write-unlock.hex > fd3206-write-unlock.hex.sha256
+          cat fd3206-write-unlock.hex.sha256
 
       - name: Attest the firmware's build provenance
         id: provenance
         if: steps.verify.outputs.proceed == 'true'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: dist/fdswriteunlock.hex
+          subject-path: dist/fd3206-write-unlock.hex
 
       - name: Generate the SBOM
         if: steps.verify.outputs.proceed == 'true'
@@ -87,7 +87,7 @@ jobs:
         with:
           path: .
           format: spdx-json
-          output-file: dist/fdswriteunlock.spdx.json
+          output-file: dist/fd3206-write-unlock.spdx.json
           upload-artifact: false
           upload-release-assets: false
 
@@ -95,14 +95,14 @@ jobs:
         if: steps.verify.outputs.proceed == 'true'
         uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
-          subject-path: dist/fdswriteunlock.hex
-          sbom-path: dist/fdswriteunlock.spdx.json
+          subject-path: dist/fd3206-write-unlock.hex
+          sbom-path: dist/fd3206-write-unlock.spdx.json
 
       - name: Stage the provenance bundle
         if: steps.verify.outputs.proceed == 'true'
         env:
           BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
-        run: cp -f "$BUNDLE" dist/fdswriteunlock.hex.sigstore.json
+        run: cp -f "$BUNDLE" dist/fd3206-write-unlock.hex.sigstore.json
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: steps.verify.outputs.proceed == 'true'

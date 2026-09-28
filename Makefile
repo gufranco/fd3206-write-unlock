@@ -14,7 +14,7 @@ AVRDUDE ?= avrdude
 PYTHON ?= python3
 
 BUILD := build
-NAME := fdswriteunlock
+NAME := fd3206-write-unlock
 RELEASE := $(BUILD)/release
 DEBUG := $(BUILD)/debug
 RELEASE_ELF := $(RELEASE)/$(NAME).elf

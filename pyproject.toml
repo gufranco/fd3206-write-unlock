@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 [project]
-name = "fdswriteunlock-tools"
+name = "fd3206-write-unlock-tools"
 version = "0.0.0"
 requires-python = ">=3.13"
 

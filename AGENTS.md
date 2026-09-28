@@ -136,7 +136,7 @@ make clean      remove build output
 
 ## Releases
 
-semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, downloads the `fdswriteunlock.hex` artifact that same CI run built and tested into a temporary directory, validates it with [`tools/check_hex.py`](tools/check_hex.py), and never rebuilds. Each release attaches the hex, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to the same hex, which meets SLSA Build Level 2. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
+semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, downloads the `fd3206-write-unlock.hex` artifact that same CI run built and tested into a temporary directory, validates it with [`tools/check_hex.py`](tools/check_hex.py), and never rebuilds. Each release attaches the hex, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to the same hex, which meets SLSA Build Level 2. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
 
 ## Public repository
 
@@ -144,11 +144,11 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 
 ## Measuring a change
 
-- **A refactor changes nothing, and the hex proves it.** Compare the SHA-256 of `build/release/fdswriteunlock.hex` before and after. Equal digests end the review; different ones mean the change is not a pure refactor and `make test` decides.
+- **A refactor changes nothing, and the hex proves it.** Compare the SHA-256 of `build/release/fd3206-write-unlock.hex` before and after. Equal digests end the review; different ones mean the change is not a pure refactor and `make test` decides.
 - **A mutant only counts if it builds.** When checking that a test catches a defect, confirm the mutated firmware compiled. A mutant rejected by `-Werror` produces no test output, which reads like silence, not like a catch.
 - **Probe the registers before blaming the firmware.** When a scenario fails, print DDRB, PORTB and the pin state cycle by cycle from a small throwaway program linked against `tests/sim/board.c`. Twice now the defect was in the harness.
 - **State the timing figure's origin.** An instruction count, a datasheet number and a simulation are three different claims. Say which one a number is.
-- **Check the size of a coverage list, not only its result.** "0 instructions never executed" is only as strong as the list it was checked against. `wc -l build/release/fdswriteunlock.insn` belongs in any review of the coverage tooling.
+- **Check the size of a coverage list, not only its result.** "0 instructions never executed" is only as strong as the list it was checked against. `wc -l build/release/fd3206-write-unlock.insn` belongs in any review of the coverage tooling.
 
 ## Failure modes this repository has had
 

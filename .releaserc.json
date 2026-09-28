@@ -83,19 +83,19 @@
       {
         "assets": [
           {
-            "path": "dist/fdswriteunlock.hex",
+            "path": "dist/fd3206-write-unlock.hex",
             "label": "Firmware for the ATtiny2313A and ATtiny4313, Intel HEX"
           },
           {
-            "path": "dist/fdswriteunlock.hex.sha256",
+            "path": "dist/fd3206-write-unlock.hex.sha256",
             "label": "SHA-256 of the firmware"
           },
           {
-            "path": "dist/fdswriteunlock.hex.sigstore.json",
+            "path": "dist/fd3206-write-unlock.hex.sigstore.json",
             "label": "Signed build provenance of the firmware, Sigstore bundle"
           },
           {
-            "path": "dist/fdswriteunlock.spdx.json",
+            "path": "dist/fd3206-write-unlock.spdx.json",
             "label": "Software bill of materials, SPDX JSON"
           }
         ],

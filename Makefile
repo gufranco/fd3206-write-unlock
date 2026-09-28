@@ -1,6 +1,7 @@
 MCU := attiny2313a
 AVRDUDE_PART := t2313a
 F_CPU := 8000000UL
+FLASH_BYTES := 2048
 LFUSE := 0xE4
 HFUSE := 0xD9
 EFUSE := 0xFF
@@ -125,7 +126,7 @@ size: $(RELEASE_ELF)
 figures: $(RELEASE_ELF)
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $< --update
 
-analyse: $(RELEASE_ELF) $(DEBUG_ELF)
+analyse: $(RELEASE_HEX) $(DEBUG_ELF)
 	clang-format --dry-run --Werror $(C_FILES)
 	ruff check
 	ruff format --check
@@ -139,6 +140,7 @@ analyse: $(RELEASE_ELF) $(DEBUG_ELF)
 	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -funsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
 	$(foreach config,$(CPPCHECK_CONFIGS),cppcheck $(CPPCHECK_FLAGS) $(config) --addon=misra $(FIRMWARE_C) &&) true
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELF)
+	$(PYTHON) -m tools.check_hex $(RELEASE_HEX) --max-bytes $(FLASH_BYTES)
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage run -m unittest discover -s tests/tools -t .
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage report
 

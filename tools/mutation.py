@@ -11,7 +11,7 @@ from pathlib import Path
 
 Runner = Callable[[list[str], Path], int]
 
-BUILD_TARGET = "build/release/fd3206-write-unlock.elf"
+BUILD_TARGET = "images"
 TEST_TARGET = "test"
 KILLED_BY_BUILD = "killed by build"
 KILLED_BY_TESTS = "killed by tests"

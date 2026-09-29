@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-<b>8</b> 个焊点 · <b>0</b> 处切线 · <b>0</b> 个额外元件 · <b>238</b> 字节闪存 · <b>15</b> 条指令的边沿中断 · <b>0</b> 项 MISRA C:2012 问题 · <b>15</b> 个仿真场景
+<b>8</b> 个焊点 · <b>0</b> 处切线 · <b>0</b> 个额外元件 · <b>238</b> 字节闪存 · <b>15</b> 条指令的边沿中断 · <b>0</b> 项 MISRA C:2012 问题 · <b>16</b> 个仿真场景
 </p>
 
 ---
@@ -75,7 +75,7 @@ C17 代码在调试版和正式版中均按 MISRA C:2012 检查，所有寄存�
 <td width="50%" valign="top">
 
 **每条指令都被执行**<br>
-15 个 simavr 场景运行正式版映像，只要有一条固件指令未被执行就判为失败；逻辑还针对全部 65,536 种端口组合进行了检查。
+16 个 simavr 场景运行每种芯片的正式版映像，只要有一条固件指令未被执行就判为失败；逻辑还针对全部 65,536 种端口组合进行了检查。
 
 </td>
 <td width="50%" valign="top">
@@ -221,21 +221,21 @@ Twin Famicom 使用相同的三美驱动机构，搭载 FD7201P 或 FD3206P，�
 | USBasp，或运行 ArduinoISP 的 Arduino Uno 或 Nano | 编程器 | 从 Arduino IDE 示例中烧录 ArduinoISP |
 | Docker 与 Python 3 | 仅在自行构建固件时需要 | [docker.com](https://www.docker.com) |
 
-每个[发布版本](https://github.com/gufranco/fd3206-write-unlock/releases)都附有 `fd3206-write-unlock.hex`，即流水线构建并测试过的同一映像，以及它的 SHA-256：
+每个[发布版本](https://github.com/gufranco/fd3206-write-unlock/releases)都为每种芯片附有一个映像，即 `fd3206-write-unlock-attiny2313a.hex` 和 `fd3206-write-unlock-attiny4313.hex`，均为流水线构建并测试过的原样映像，并附各自的 SHA-256：
 
 ```sh
-sha256sum -c fd3206-write-unlock.hex.sha256
+sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
 make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock.hex:i
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
 ```
 
-如需自行构建同一映像，`make` 会在版本固定的 Docker 工具链中构建，`make flash PROGRAMMER=usbasp` 负责烧录。用 Arduino 作编程器时，指定 `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`。
+如需自行构建同一映像，`make` 会在版本固定的 Docker 工具链中构建，`make flash PROGRAMMER=usbasp` 负责烧录。用 Arduino 作编程器时，指定 `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`。使用 ATtiny4313 时，在 `make fuses` 和 `make flash` 后都加上 `MCU=attiny4313`，或向 avrdude 传入 `-p t4313` 和 ATtiny4313 的映像。
 
 熔丝设置为：低位 `0xE4`，内部 8 MHz 振荡器，无时钟输出；高位 `0xD9`，4.3 V 掉电复位，保留编程功能。新芯片以 8 分频的 4 MHz 振荡器运行；固件在启动时把分频系数设为 1，因此未设置熔丝的芯片也能以 4 MHz 工作，但边沿抖动会加倍，且没有掉电保护。
 
 ### 第 4 步：安装芯片，仅限 FD3206P 驱动器
 
-驱动机构上唯一新增的元件，就是焊在 FD3206P 上方、已烧录好的 ATtiny2313A。这块电路板上不切断任何线路，也不添加导线。ATtiny4313 引脚排列相同，可运行同一固件。
+驱动机构上唯一新增的元件，就是焊在 FD3206P 上方、已烧录好的 ATtiny2313A。这块电路板上不切断任何线路，也不添加导线。ATtiny4313 引脚排列相同，但其 RAM 更大，栈顶位置不同，因此需使用它自己的映像。
 
 | ATtiny2313A 引脚 | FD3206P 信号 | 操作 |
 |---|---|---|
@@ -275,7 +275,7 @@ Famicom World 的照片把 5 脚标为 /WRITE PROTECT。电源板和 RAM 适配�
 
 ## 行为要求
 
-每条要求都由一个在 7.2、8.0 和 8.8 MHz 下运行正式版固件映像的仿真场景验证。门控与磁头选择还针对输入端口全部 65,536 种组合进行了检查。
+每条要求都由一个在 7.2、8.0 和 8.8 MHz 下运行每种芯片正式版固件映像的仿真场景验证。门控与磁头选择还针对输入端口全部 65,536 种组合进行了检查。
 
 | 要求 | 场景 |
 |---|---|
@@ -351,10 +351,10 @@ Twin Famicom 使用相同的三美驱动机构，因此搭载 FD3206P 的机器�
 
 ## 版本管理
 
-发布版本遵循[语义化版本](https://semver.org/)，在流水线通过后由 `main` 自动生成。每个[发布版本](https://github.com/gufranco/fd3206-write-unlock/releases)都附有发布说明、固件 hex、其 SHA-256、签名构建来源的 Sigstore 证明包，以及与同一 hex 绑定证明的 SPDX 软件物料清单。来源证明由发布工作流在 GitHub 托管的运行器上生成，满足 SLSA Build Level 2。下载后可用以下命令校验：
+发布版本遵循[语义化版本](https://semver.org/)，在流水线通过后由 `main` 自动生成。每个[发布版本](https://github.com/gufranco/fd3206-write-unlock/releases)都附有发布说明、每种芯片的固件 hex 及其 SHA-256、签名构建来源的 Sigstore 证明包，以及与两个 hex 绑定证明的 SPDX 软件物料清单。来源证明由发布工作流在 GitHub 托管的运行器上生成，满足 SLSA Build Level 2。下载后可用以下命令校验：
 
 ```sh
-gh attestation verify fd3206-write-unlock.hex --repo gufranco/fd3206-write-unlock
+gh attestation verify fd3206-write-unlock-attiny2313a.hex --repo gufranco/fd3206-write-unlock
 ```
 
 ## 支持

@@ -1,8 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
 # SPDX-License-Identifier: MIT
 
-MCU := attiny2313a
-AVRDUDE_PART := t2313a
+MCUS := attiny2313a attiny4313
+MCU ?= attiny2313a
+AVRDUDE_PART_attiny2313a := t2313a
+AVRDUDE_PART_attiny4313 := t4313
+AVRDUDE_PART ?= $(AVRDUDE_PART_$(MCU))
 F_CPU := 8000000UL
 FLASH_BYTES := 2048
 EDGE_HANDLER_BUDGET_CYCLES := 33
@@ -18,15 +21,16 @@ PYTHON ?= python3
 
 BUILD := build
 NAME := fd3206-write-unlock
-RELEASE := $(BUILD)/release
-DEBUG := $(BUILD)/debug
-RELEASE_ELF := $(RELEASE)/$(NAME).elf
-RELEASE_HEX := $(RELEASE)/$(NAME).hex
-DEBUG_ELF := $(DEBUG)/$(NAME).elf
+image_path = $(BUILD)/$(1)/release/$(NAME)-$(1)
+RELEASE := $(BUILD)/$(MCU)/release
+DEBUG := $(BUILD)/$(MCU)/debug
+RELEASE_ELF := $(call image_path,$(MCU)).elf
+RELEASE_HEX := $(call image_path,$(MCU)).hex
+DEBUG_ELF := $(DEBUG)/$(NAME)-$(MCU).elf
 
 CONTAINER_TARGETS := all size analyse hosttest simtest test mutation misra figures
 
-.PHONY: $(CONTAINER_TARGETS) fuses flash hooks clean
+.PHONY: $(CONTAINER_TARGETS) images image fuses flash hooks clean
 
 clean:
 	rm -rf $(BUILD)
@@ -78,7 +82,7 @@ SIM_LIBS := $(shell pkg-config --libs simavr libelf)
 
 RELEASE_OBJECTS := $(patsubst src/%,$(RELEASE)/%.o,$(FIRMWARE_C) $(FIRMWARE_S))
 DEBUG_OBJECTS := $(patsubst src/%,$(DEBUG)/%.o,$(FIRMWARE_C) $(FIRMWARE_S))
-INSTRUCTIONS := $(RELEASE)/$(NAME).insn
+INSTRUCTIONS := $(call image_path,$(MCU)).insn
 HOST_TEST := $(BUILD)/host/host_test
 SIM_TEST := $(BUILD)/sim/sim_test
 
@@ -88,7 +92,12 @@ CPPCHECK_FLAGS := --std=c17 --platform=avr8 --enable=all --check-level=exhaustiv
 	-D__AVR_ATtiny2313A__ -DF_CPU=$(F_CPU)
 CPPCHECK_CONFIGS := -DFDSWU_DEBUG -UFDSWU_DEBUG
 
-all: $(RELEASE_HEX) $(DEBUG_ELF)
+all: images $(DEBUG_ELF)
+
+images:
+	$(foreach mcu,$(MCUS),$(MAKE) --no-print-directory MCU=$(mcu) image &&) true
+
+image: $(RELEASE_HEX) $(INSTRUCTIONS)
 
 $(RELEASE)/%.c.o: src/%.c $(FIRMWARE_H)
 	@mkdir -p $(@D)
@@ -132,7 +141,7 @@ size: $(RELEASE_ELF)
 figures: $(RELEASE_ELF)
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $< --update
 
-analyse: $(RELEASE_HEX) $(DEBUG_ELF)
+analyse: images $(DEBUG_ELF)
 	clang-format --dry-run --Werror $(C_FILES)
 	ruff check
 	ruff format --check
@@ -147,8 +156,9 @@ analyse: $(RELEASE_HEX) $(DEBUG_ELF)
 	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -funsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
 	$(foreach config,$(CPPCHECK_CONFIGS),cppcheck $(CPPCHECK_FLAGS) $(config) --addon=misra $(FIRMWARE_C) &&) true
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELF)
-	$(PYTHON) -m tools.check_hex $(RELEASE_HEX) --max-bytes $(FLASH_BYTES)
-	$(PYTHON) -m tools.isr_check $(AVR_OBJDUMP) $(RELEASE_ELF) $(EDGE_HANDLER_BUDGET_CYCLES) $(INTERRUPTS_OFF_BUDGET_CYCLES)
+	$(foreach mcu,$(MCUS),$(PYTHON) -m tools.check_hex $(call image_path,$(mcu)).hex --max-bytes $(FLASH_BYTES) &&) true
+	$(foreach mcu,$(MCUS),$(PYTHON) -m tools.isr_check $(AVR_OBJDUMP) $(call image_path,$(mcu)).elf \
+		$(EDGE_HANDLER_BUDGET_CYCLES) $(INTERRUPTS_OFF_BUDGET_CYCLES) &&) true
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage run -m unittest discover -s tests/tools -t .
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage report
 
@@ -161,8 +171,9 @@ hosttest: $(HOST_TEST)
 	gcovr --root . --filter 'src/' --exclude-branches-by-pattern '.*FDSWU_ASSERT.*' \
 		--fail-under-line 100 --fail-under-branch 100 --print-summary $(BUILD)/host
 
-simtest: $(SIM_TEST) $(RELEASE_ELF) $(INSTRUCTIONS)
-	$(foreach clock,$(SIM_CLOCKS_HZ),$(SIM_TEST) $(MCU) $(RELEASE_ELF) $(INSTRUCTIONS) $(clock) &&) true
+simtest: $(SIM_TEST) images
+	$(foreach mcu,$(MCUS),$(foreach clock,$(SIM_CLOCKS_HZ),\
+		$(SIM_TEST) $(mcu) $(call image_path,$(mcu)).elf $(call image_path,$(mcu)).insn $(clock) &&)) true
 
 test: hosttest simtest
 

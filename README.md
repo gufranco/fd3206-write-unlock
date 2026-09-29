@@ -28,7 +28,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
 </p>
 
 <p align="center">
-<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>238</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>15</b> simulation scenarios
+<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>238</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>16</b> simulation scenarios
 </p>
 
 ---
@@ -75,7 +75,7 @@ C17 checked against MISRA C:2012 in debug and release builds, with every registe
 <td width="50%" valign="top">
 
 **Every instruction exercised**<br>
-15 simavr scenarios run the release image and fail if any firmware instruction never executes; the logic is checked on all 65,536 port combinations.
+16 simavr scenarios run the release image of each chip and fail if any firmware instruction never executes; the logic is checked on all 65,536 port combinations.
 
 </td>
 <td width="50%" valign="top">
@@ -222,21 +222,21 @@ Reports on the nesdev forum `(as of 2026-09)`:
 | A USBasp, or an Arduino Uno or Nano running ArduinoISP | the programmer | load ArduinoISP from the Arduino IDE examples |
 | Docker and Python 3 | only to build the firmware yourself | [docker.com](https://www.docker.com) |
 
-Every [release](https://github.com/gufranco/fd3206-write-unlock/releases) attaches `fd3206-write-unlock.hex`, the exact image the pipeline built and tested, with its SHA-256:
+Every [release](https://github.com/gufranco/fd3206-write-unlock/releases) attaches one image per chip, `fd3206-write-unlock-attiny2313a.hex` and `fd3206-write-unlock-attiny4313.hex`, each exactly as the pipeline built and tested it, with its SHA-256:
 
 ```sh
-sha256sum -c fd3206-write-unlock.hex.sha256
+sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
 make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock.hex:i
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
 ```
 
-To build the same image yourself, `make` builds it in a pinned Docker toolchain and `make flash PROGRAMMER=usbasp` writes it. With an Arduino as the programmer, pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`.
+To build the same image yourself, `make` builds it in a pinned Docker toolchain and `make flash PROGRAMMER=usbasp` writes it. With an Arduino as the programmer, pass `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX`. For an ATtiny4313, add `MCU=attiny4313` to both `make fuses` and `make flash`, or give avrdude `-p t4313` and the ATtiny4313 image.
 
 The fuses are low `0xE4`, 8 MHz internal oscillator with no clock output, and high `0xD9`, brown-out reset at 4.3 V with programming left enabled. A new chip runs its 4 MHz oscillator divided by 8; the firmware sets the prescaler to 1 at start-up, so an unfused chip still works at 4 MHz, with twice the edge variation and no brown-out protection.
 
 ### Step 4: install the chip, FD3206P drives only
 
-The ATtiny4313 has the same pinout and runs the same firmware.
+The ATtiny4313 has the same pinout. It takes its own image, because its larger RAM moves the top of the stack.
 
 | ATtiny2313A pin | FD3206P signal | Action |
 |:--|:--|:--:|
@@ -274,7 +274,7 @@ If whole-disk writes still fail, check that WRITE DATA and /WRITE GATE reach FD3
 
 ## Behaviour
 
-Each requirement is verified by a simulation scenario that runs the release firmware image at 7.2, 8.0 and 8.8 MHz. The gating and head selection are also checked for all 65,536 input port combinations.
+Each requirement is verified by a simulation scenario that runs the release firmware image of each chip at 7.2, 8.0 and 8.8 MHz. The gating and head selection are also checked for all 65,536 input port combinations.
 
 | Requirement | Scenario |
 |:--|:--|
@@ -350,10 +350,10 @@ The Twin Famicom uses the same Mitsumi drive mechanism, so an FD3206P unit takes
 
 ## Versioning
 
-Releases follow [Semantic Versioning](https://semver.org/) and are cut automatically from `main` after the pipeline passes. Every [release](https://github.com/gufranco/fd3206-write-unlock/releases) carries its notes, the firmware hex, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX software bill of materials attested to the same hex. Provenance comes from GitHub-hosted runners through the release workflow, which meets SLSA Build Level 2. Verify a download with:
+Releases follow [Semantic Versioning](https://semver.org/) and are cut automatically from `main` after the pipeline passes. Every [release](https://github.com/gufranco/fd3206-write-unlock/releases) carries its notes, the firmware hex of each chip with its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX software bill of materials attested to both images. Provenance comes from GitHub-hosted runners through the release workflow, which meets SLSA Build Level 2. Verify a download with:
 
 ```sh
-gh attestation verify fd3206-write-unlock.hex --repo gufranco/fd3206-write-unlock
+gh attestation verify fd3206-write-unlock-attiny2313a.hex --repo gufranco/fd3206-write-unlock
 ```
 
 ## Support

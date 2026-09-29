@@ -110,7 +110,7 @@ include/fdswu/       logic-layer headers: pins, heads plan, conditions, assertio
 include/port/        C prototypes of the port module, register names for the assembly
 src/                 firmware: logic modules, main loop, assembly port module, INT0 handler
 tests/host/          host unit tests of the logic layer
-tests/sim/           simavr harness and the 15 scenarios, run at 7.2, 8.0 and 8.8 MHz
+tests/sim/           simavr harness and the 16 scenarios, run on each chip's image at 7.2, 8.0 and 8.8 MHz
 tests/tools/         unit tests of the Python tools
 tests/type_widths.c  compile-time record of type widths per compiler
 tools/               Python gates and helpers called by the Makefile
@@ -124,21 +124,24 @@ build/               generated, never committed
 ## Build commands
 
 ```
-make            release hex and debug ELF, in Docker
+make            release hex for each chip and debug ELF, in Docker
 make size       firmware size
-make analyse    clang-format, ruff, style gate, layer check, type widths, cppcheck with MISRA, README figures, tool tests
+make analyse    clang-format, ruff, style gate, layer check, REUSE, type widths, cppcheck with MISRA, README figures,
+                hex size and edge-handler cycle budget per chip, tool tests at 100 percent
 make test       host tests at 100 percent line and branch, then the simavr suite at 100 percent instructions
+                on each chip at three clocks, failing past 32 bytes of stack
 make misra      the MISRA C:2012 gate alone, also part of analyse
+make mutation   break the firmware in 11 known ways; each break must fail the build or the tests
 make figures    rewrite the README figures block
 make hooks      run analyse and test before every commit and check each commit message
-make fuses      write lfuse 0xE4 and hfuse 0xD9 on the host, PROGRAMMER and PORT as needed
-make flash      program the chip from the host
+make fuses      write lfuse 0xE4 and hfuse 0xD9 on the host, PROGRAMMER, PORT and MCU as needed
+make flash      program the chip from the host, MCU=attiny4313 for that chip
 make clean      remove build output
 ```
 
 ## Releases
 
-semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, downloads the `fd3206-write-unlock.hex` artifact that same CI run built and tested into a temporary directory, validates it with [`tools/check_hex.py`](tools/check_hex.py), and never rebuilds. Each release attaches the hex, its SHA-256, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to the same hex, which meets SLSA Build Level 2. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
+semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, downloads the per-chip images that same CI run built and tested into a temporary directory, validates each with [`tools/check_hex.py`](tools/check_hex.py), and never rebuilds. Each release attaches both hex images with their SHA-256 files, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to both images, which meets SLSA Build Level 2. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
 
 ## Public repository
 
@@ -146,11 +149,11 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 
 ## Measuring a change
 
-- **A refactor changes nothing, and the hex proves it.** Compare the SHA-256 of `build/release/fd3206-write-unlock.hex` before and after. Equal digests end the review; different ones mean the change is not a pure refactor and `make test` decides.
+- **A refactor changes nothing, and the hex proves it.** Compare the SHA-256 of `build/attiny2313a/release/fd3206-write-unlock-attiny2313a.hex` before and after. Equal digests end the review; different ones mean the change is not a pure refactor and `make test` decides.
 - **A mutant only counts if it builds.** When checking that a test catches a defect, confirm the mutated firmware compiled. A mutant rejected by `-Werror` produces no test output, which reads like silence, not like a catch.
 - **Probe the registers before blaming the firmware.** When a scenario fails, print DDRB, PORTB and the pin state cycle by cycle from a small throwaway program linked against `tests/sim/board.c`. Twice now the defect was in the harness.
 - **State the timing figure's origin.** An instruction count, a datasheet number and a simulation are three different claims. Say which one a number is.
-- **Check the size of a coverage list, not only its result.** "0 instructions never executed" is only as strong as the list it was checked against. `wc -l build/release/fd3206-write-unlock.insn` belongs in any review of the coverage tooling.
+- **Check the size of a coverage list, not only its result.** "0 instructions never executed" is only as strong as the list it was checked against. `wc -l build/attiny2313a/release/fd3206-write-unlock-attiny2313a.insn` belongs in any review of the coverage tooling.
 
 ## Failure modes this repository has had
 
@@ -169,6 +172,7 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | Moving register access behind assembly calls pushed the gate response past 10 us: three calls per main-loop pass plus the update | Every other scenario passed | the gate-response scenarios; the loop now makes one `fdswu_port_poll` call that services the watchdog and samples both ports |
 | `_Noreturn`, valid C11, still broke MISRA: rule 1.4 lists it as an emergent feature | It compiled cleanly under `-pedantic-errors` | the MISRA gate in `make analyse`, calibrated against a planted `goto` |
 | simavr re-raised every input with its pull-up enabled to high on each port or direction write, overriding the level the harness drove, so the heads never engaged once the inputs gained pull-ups | It looked like the pull-ups broke the gating | the harness declares the pins it drives with `AVR_IOCTL_IOPORT_SET_EXTERNAL`, which simavr gives priority over a pull-up, as real hardware does |
+| The README said the ATtiny4313 runs the ATtiny2313A image; that image's start-up writes only SPL, so on the 4313, whose SPH resets to 1, the stack pointer lands at 0x1DF, past its RAM, and the first call crashes | The two chips share one datasheet and one pinout | each chip builds its own image, and the simavr suite runs each on its own core |
 | The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; hard rule 7 |
 
 ## Real hardware

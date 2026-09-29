@@ -67,19 +67,20 @@ jobs:
           ARTIFACT_DIR: ${{ runner.temp }}/ci-artifact
         run: |
           set -euo pipefail
-          python3 tools/check_hex.py "$ARTIFACT_DIR/fd3206-write-unlock.hex" --max-bytes 2048
           mkdir -p dist
-          cp "$ARTIFACT_DIR/fd3206-write-unlock.hex" dist/fd3206-write-unlock.hex
-          cd dist
-          sha256sum fd3206-write-unlock.hex > fd3206-write-unlock.hex.sha256
-          cat fd3206-write-unlock.hex.sha256
+          for mcu in attiny2313a attiny4313; do
+            image="fd3206-write-unlock-$mcu.hex"
+            python3 tools/check_hex.py "$ARTIFACT_DIR/$mcu/release/$image" --max-bytes 2048
+            cp "$ARTIFACT_DIR/$mcu/release/$image" "dist/$image"
+            (cd dist && sha256sum "$image" > "$image.sha256" && cat "$image.sha256")
+          done
 
       - name: Attest the firmware's build provenance
         id: provenance
         if: steps.verify.outputs.proceed == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: dist/fd3206-write-unlock.hex
+          subject-path: dist/*.hex
 
       - name: Generate the SBOM
         if: steps.verify.outputs.proceed == 'true'
@@ -95,14 +96,14 @@ jobs:
         if: steps.verify.outputs.proceed == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: dist/fd3206-write-unlock.hex
+          subject-path: dist/*.hex
           sbom-path: dist/fd3206-write-unlock.spdx.json
 
       - name: Stage the provenance bundle
         if: steps.verify.outputs.proceed == 'true'
         env:
           BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
-        run: cp -f "$BUNDLE" dist/fd3206-write-unlock.hex.sigstore.json
+        run: cp -f "$BUNDLE" dist/fd3206-write-unlock.sigstore.json
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: steps.verify.outputs.proceed == 'true'

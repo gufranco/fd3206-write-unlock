@@ -62,7 +62,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fd3206-write-unlock-hex
-          path: build/release/fd3206-write-unlock.hex
+          path: |
+            build/attiny2313a/release/fd3206-write-unlock-attiny2313a.hex
+            build/attiny4313/release/fd3206-write-unlock-attiny4313.hex
           if-no-files-found: error
 
   release-tooling:

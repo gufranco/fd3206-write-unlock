@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-はんだ付け <b>8</b> か所 · パターン切断 <b>0</b> · 追加部品 <b>0</b> · フラッシュ <b>238</b> バイト · <b>15</b> 命令のエッジ割り込み · MISRA C:2012 の指摘 <b>0</b> · シミュレーション <b>15</b> シナリオ
+はんだ付け <b>8</b> か所 · パターン切断 <b>0</b> · 追加部品 <b>0</b> · フラッシュ <b>238</b> バイト · <b>15</b> 命令のエッジ割り込み · MISRA C:2012 の指摘 <b>0</b> · シミュレーション <b>16</b> シナリオ
 </p>
 
 ---
@@ -75,7 +75,7 @@ C17 をデバッグ版とリリース版の両方で MISRA C:2012 に照らし�
 <td width="50%" valign="top">
 
 **全命令を実行**<br>
-15 の simavr シナリオがリリース版イメージを実行し、実行されない命令が 1 つでもあれば失敗します。論理は入力ポートの 65,536 通りすべてで検査しています。
+16 の simavr シナリオが各チップのリリース版イメージを実行し、実行されない命令が 1 つでもあれば失敗します。論理は入力ポートの 65,536 通りすべてで検査しています。
 
 </td>
 <td width="50%" valign="top">
@@ -221,21 +221,21 @@ Famicom World の記事 [FDS Power Board Modifications](https://famicomworld.com
 | USBasp、または ArduinoISP を書き込んだ Arduino Uno か Nano | 書き込み器 | Arduino IDE のスケッチ例から ArduinoISP を書き込む |
 | Docker と Python 3 | ファームウェアを自分でビルドする場合のみ | [docker.com](https://www.docker.com) |
 
-各[リリース](https://github.com/gufranco/fd3206-write-unlock/releases)には、パイプラインがビルドしてテストしたイメージそのものである `fd3206-write-unlock.hex` と、その SHA-256 が添付されています。
+各[リリース](https://github.com/gufranco/fd3206-write-unlock/releases)には、チップごとに、パイプラインがビルドしてテストしたイメージそのものである `fd3206-write-unlock-attiny2313a.hex` と `fd3206-write-unlock-attiny4313.hex`、それぞれの SHA-256 が添付されています。
 
 ```sh
-sha256sum -c fd3206-write-unlock.hex.sha256
+sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
 make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock.hex:i
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
 ```
 
-同じイメージを自分でビルドする場合は、`make` がバージョン固定の Docker ツールチェーンでビルドし、`make flash PROGRAMMER=usbasp` で書き込みます。Arduino を書き込み器にする場合は `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX` を指定します。
+同じイメージを自分でビルドする場合は、`make` がバージョン固定の Docker ツールチェーンでビルドし、`make flash PROGRAMMER=usbasp` で書き込みます。Arduino を書き込み器にする場合は `PROGRAMMER=arduino_as_isp PORT=/dev/cu.usbmodemXXXX` を指定します。ATtiny4313 の場合は `make fuses` と `make flash` の両方に `MCU=attiny4313` を付けるか、avrdude に `-p t4313` と ATtiny4313 用のイメージを渡します。
 
 ヒューズは下位 `0xE4` が内蔵 8 MHz 発振器でクロック出力なし、上位 `0xD9` が 4.3 V のブラウンアウトリセットでプログラミング有効です。新品のチップは 4 MHz の発振器を 8 分周して動いています。ファームウェアは起動時に分周比を 1 に設定するので、ヒューズを書き換えていないチップでも 4 MHz で動作します。ただしエッジごとのばらつきは 2 倍になり、ブラウンアウト保護もありません。
 
 ### 手順 4: チップを取り付ける、FD3206P のドライブのみ
 
-ドライブ機構に追加する部品は、書き込み済みの ATtiny2313A を FD3206P の上にはんだ付けするものだけです。この基板では何も切断せず、配線も追加しません。ATtiny4313 はピン配置が同じで、同じファームウェアが動きます。
+ドライブ機構に追加する部品は、書き込み済みの ATtiny2313A を FD3206P の上にはんだ付けするものだけです。この基板では何も切断せず、配線も追加しません。ATtiny4313 はピン配置が同じですが、RAM が大きくスタックの先頭が異なるため、専用のイメージを使います。
 
 | ATtiny2313A のピン | FD3206P の信号 | 作業 |
 |---|---|---|
@@ -275,7 +275,7 @@ Famicom World の写真では 5 番ピンに /WRITE PROTECT と記されてい�
 
 ## 動作要件
 
-各要件は、リリース版のファームウェアイメージを 7.2、8.0、8.8 MHz で実行するシミュレーションのシナリオで検証しています。ゲートとヘッドの選択は、入力ポートの 65,536 通りの全組み合わせでも確認しています。
+各要件は、各チップのリリース版ファームウェアイメージを 7.2、8.0、8.8 MHz で実行するシミュレーションのシナリオで検証しています。ゲートとヘッドの選択は、入力ポートの 65,536 通りの全組み合わせでも確認しています。
 
 | 要件 | シナリオ |
 |---|---|
@@ -351,10 +351,10 @@ Famicom World の写真では 5 番ピンに /WRITE PROTECT と記されてい�
 
 ## バージョン管理
 
-リリースは [Semantic Versioning](https://semver.org/) に従い、パイプラインが通った後に `main` から自動で作られます。各[リリース](https://github.com/gufranco/fd3206-write-unlock/releases)にはリリースノート、ファームウェアの hex、その SHA-256、署名付きビルド来歴の Sigstore バンドル、同じ hex に証明を結び付けた SPDX 形式のソフトウェア部品表が付きます。来歴は GitHub ホストのランナー上でリリース用ワークフローが作成し、SLSA Build Level 2 を満たします。ダウンロードしたファイルは次のコマンドで検証できます。
+リリースは [Semantic Versioning](https://semver.org/) に従い、パイプラインが通った後に `main` から自動で作られます。各[リリース](https://github.com/gufranco/fd3206-write-unlock/releases)にはリリースノート、チップごとのファームウェアの hex とその SHA-256、署名付きビルド来歴の Sigstore バンドル、両方の hex に証明を結び付けた SPDX 形式のソフトウェア部品表が付きます。来歴は GitHub ホストのランナー上でリリース用ワークフローが作成し、SLSA Build Level 2 を満たします。ダウンロードしたファイルは次のコマンドで検証できます。
 
 ```sh
-gh attestation verify fd3206-write-unlock.hex --repo gufranco/fd3206-write-unlock
+gh attestation verify fd3206-write-unlock-attiny2313a.hex --repo gufranco/fd3206-write-unlock
 ```
 
 ## サポート

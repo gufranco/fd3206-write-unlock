@@ -34,7 +34,9 @@ OBJDUMP_OUTPUT = """
   62:\tff cf       \trjmp\t.-2
 """
 
-FIGURES = doc_figures.Figures(flash_bytes=320, handler_instructions=3, source_lines=42)
+FIGURES = doc_figures.Figures(
+    flash_bytes=320, handler_instructions=3, source_lines=42, scenarios=2
+)
 
 README = f"""# Title
 
@@ -46,6 +48,19 @@ Tail.
 """
 
 
+SIM_TEST = """#define TEST_CASE(function) {#function, function}
+static const test_case_t TESTS[] = {
+    TEST_CASE(first),
+    TEST_CASE(second),
+};
+"""
+
+
+def readme_for(labels: doc_figures.Labels) -> str:
+    stale = "\n".join(template.format(0) for _, template in labels.inline)
+    return f"{README}\n{stale}\n"
+
+
 def make_root() -> Path:
     root = Path(tempfile.mkdtemp())
     (root / "src").mkdir()
@@ -53,8 +68,10 @@ def make_root() -> Path:
     (root / "src" / "a.c").write_text("one\ntwo\n\nthree\n")
     (root / "src" / "b.S").write_text("x\n")
     (root / "include" / "fdswu" / "a.h").write_text("y\nz\n")
-    for name in doc_figures.READMES:
-        (root / name).write_text(README)
+    (root / "tests" / "sim").mkdir(parents=True)
+    (root / doc_figures.SCENARIO_SOURCE).write_text(SIM_TEST)
+    for name, labels in doc_figures.READMES.items():
+        (root / name).write_text(readme_for(labels))
     return root
 
 
@@ -84,6 +101,15 @@ class ParseTest(unittest.TestCase):
         lines = doc_figures.source_lines(root)
 
         self.assertEqual(lines, 7)
+
+
+class ScenarioCountTest(unittest.TestCase):
+    def test_only_table_rows_are_counted(self) -> None:
+        root = make_root()
+
+        count = doc_figures.scenario_count(root)
+
+        self.assertEqual(count, 2)
 
 
 class RunTest(unittest.TestCase):
@@ -173,13 +199,44 @@ class MainTest(unittest.TestCase):
     def test_stale_japanese_readme_alone_fails_the_check(self) -> None:
         root = make_root()
         self.run_main(root, "--update")
-        (root / "README.ja.md").write_text(README)
+        (root / "README.ja.md").write_text(readme_for(doc_figures.JAPANESE))
 
         code, errors = self.run_main(root)
 
         self.assertEqual(code, 1)
         self.assertIn("README.ja.md", errors)
         self.assertNotIn("README.md:", errors)
+
+    def test_update_rewrites_the_inline_figures(self) -> None:
+        root = make_root()
+
+        self.run_main(root, "--update")
+
+        text = (root / "README.md").read_text()
+        self.assertIn("<b>320</b> bytes of flash", text)
+        self.assertIn("<b>3</b>-instruction edge handler", text)
+        self.assertIn("<b>2</b> simulation scenarios", text)
+        self.assertIn("2 simavr scenarios run", text)
+
+    def test_stale_inline_figure_alone_fails_the_check(self) -> None:
+        root = make_root()
+        self.run_main(root, "--update")
+        readme = root / "README.zh-CN.md"
+        readme.write_text(readme.read_text().replace("<b>320</b>", "<b>238</b>"))
+
+        code, errors = self.run_main(root)
+
+        self.assertEqual(code, 1)
+        self.assertIn("README.zh-CN.md: figures are stale", errors)
+
+    def test_missing_inline_text_fails(self) -> None:
+        root = make_root()
+        (root / "README.md").write_text(README)
+
+        code, errors = self.run_main(root)
+
+        self.assertEqual(code, 1)
+        self.assertIn("expected text matching", errors)
 
     def test_missing_japanese_readme_fails(self) -> None:
         root = make_root()

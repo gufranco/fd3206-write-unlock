@@ -9,12 +9,14 @@
 
 #include "avr_ioport.h"
 #include "sim_avr.h"
+#include "sim_core.h"
 #include "sim_elf.h"
 
 enum {
     MAX_FLASH_BYTES = 4096,
     STARTUP_US = 200,
     HZ_PER_MHZ = 1000000,
+    RAM_START = 0x60,
     PORT_COUNT = 4,
     PORT_NAME_BITS = 0x7F,
     CLOCK_PRESCALER_ADDRESS = 0x46,
@@ -46,6 +48,7 @@ struct board {
     uint8_t driven_value[PORT_COUNT];
 };
 
+static uint16_t deepest_stack;
 static bool covered[MAX_FLASH_BYTES];
 static bool expected[MAX_FLASH_BYTES];
 
@@ -100,6 +103,10 @@ static void step(board_t *board) {
     if (state == cpu_Done || state == cpu_Crashed) {
         fprintf(stderr, "simulation stopped at pc 0x%04x with state %d\n", avr->pc, state);
         exit(EXIT_FAILURE);
+    }
+    const uint16_t depth = (uint16_t)(avr->ramend - _avr_sp_get(avr));
+    if (board->started && depth > deepest_stack) {
+        deepest_stack = depth;
     }
     track_heads(board);
 }
@@ -217,6 +224,26 @@ uint8_t board_watchdog_control(const board_t *board) {
 
 uint32_t board_reset_count(const board_t *board) {
     return board->resets;
+}
+
+void board_reset(board_t *board) {
+    avr_reset(board->avr);
+    for (int signal = 0; signal < SIGNAL_COUNT; signal++) {
+        const pin_t pin = SIGNAL_PINS[signal];
+        const size_t index = port_index(pin.port);
+        const board_level_t level = (board->driven_value[index] & (1U << pin.bit)) != 0U ? LEVEL_HIGH : LEVEL_LOW;
+        drive_pin(board, pin, level);
+        avr_raise_irq(board->inputs[signal], level);
+    }
+    track_heads(board);
+}
+
+uint16_t board_deepest_stack(void) {
+    return deepest_stack;
+}
+
+uint16_t board_ram_bytes(const board_t *board) {
+    return (uint16_t)(board->avr->ramend + 1U - RAM_START);
 }
 
 bool coverage_load(const char *instruction_list_path) {

@@ -17,6 +17,7 @@ enum {
     GATE_RESPONSE_LIMIT_NS = 10000,
     LOADED_GATE_RESPONSE_LIMIT_NS = 100000,
     LOADED_EDGE_BUDGET = 64,
+    STACK_LIMIT_BYTES = 32,
     LOOP_PHASE_SWEEP_CYCLES = 64,
     IDLE_EDGE_COUNT = 100,
     WRITE_EDGE_COUNT = 1000,
@@ -326,6 +327,26 @@ static bool startup_drives_no_pin_and_pulls_up_every_input(void) {
     return true;
 }
 
+static bool heads_release_on_reset_mid_write_and_writing_resumes(void) {
+    board_t *board = open_board();
+    apply_conditions(board, WRITING);
+    census_heads(board, IDLE_EDGE_COUNT, HALF_BIT_CELL_NS);
+    const board_heads_t before = board_heads(board);
+
+    board_reset(board);
+
+    const board_heads_t at_reset = board_heads(board);
+    run_ns(board, SETTLE_NS);
+    const head_census_t after = census_heads(board, IDLE_EDGE_COUNT, HALF_BIT_CELL_NS);
+    board_close(board);
+    CHECK(one_head_low(before));
+    CHECK(at_reset == HEADS_RELEASED);
+    CHECK(after.one_head_low == IDLE_EDGE_COUNT);
+    CHECK(after.repeats == 0);
+    CHECK(after.driven_high == 0);
+    return true;
+}
+
 static bool clock_is_undivided_and_watchdog_is_armed(void) {
     board_t *board = open_board();
 
@@ -374,6 +395,7 @@ static const test_case_t TESTS[] = {
     TEST_CASE(startup_drives_no_pin_and_pulls_up_every_input),
     TEST_CASE(clock_is_undivided_and_watchdog_is_armed),
     TEST_CASE(long_write_never_trips_the_watchdog),
+    TEST_CASE(heads_release_on_reset_mid_write_and_writing_resumes),
 };
 
 int main(int argc, char **argv) {
@@ -401,5 +423,8 @@ int main(int argc, char **argv) {
            LOADED_GATE_RESPONSE_LIMIT_NS);
     printf("%s at %" PRIu32 " Hz: %zu tests, %d failed, %u firmware instructions never executed\n", target_mcu,
            target_frequency_hz, test_count, failures, missing);
-    return failures == 0 && missing == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    const uint16_t stack = board_deepest_stack();
+    printf("deepest stack: %u bytes of %d allowed\n", (unsigned)stack, STACK_LIMIT_BYTES);
+    const bool stack_fits = stack <= STACK_LIMIT_BYTES;
+    return failures == 0 && missing == 0 && stack_fits ? EXIT_SUCCESS : EXIT_FAILURE;
 }

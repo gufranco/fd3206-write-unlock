@@ -20,11 +20,11 @@ def make_tree(files: dict[str, str]) -> Path:
 
 
 CLEAN_TREE = {
-    "include/fdswu/heads.h": "#include <stdint.h>\n",
+    "include/fdswu/write_plan.h": "#include <stdint.h>\n",
     "include/port/registers.h": "#include <avr/io.h>\n",
-    "src/heads.c": '#include "fdswu/heads.h"\n#include "fdswu/pins.h"\n',
+    "src/write_plan.c": '#include "fdswu/write_plan.h"\n#include "fdswu/pins.h"\n',
     "include/port/port.h": "#include <stdint.h>\n",
-    "src/main.c": '#include "port/port.h"\n#include "fdswu/heads.h"\n',
+    "src/main.c": '#include "port/port.h"\n#include "fdswu/write_plan.h"\n',
     "src/write_data_edge.S": '#include "port/registers.h"\n',
 }
 
@@ -38,17 +38,21 @@ class ViolationTest(unittest.TestCase):
         self.assertEqual(violations, [])
 
     def test_logic_module_reaching_the_hardware_is_reported(self) -> None:
-        root = make_tree({**CLEAN_TREE, "src/heads.c": "#include <avr/io.h>\n"})
+        root = make_tree({**CLEAN_TREE, "src/write_plan.c": "#include <avr/io.h>\n"})
 
         violations = layer_check.violations(root)
 
         self.assertEqual(
-            [(v.path.name, v.included) for v in violations], [("heads.c", "avr/io.h")]
+            [(v.path.name, v.included) for v in violations],
+            [("write_plan.c", "avr/io.h")],
         )
 
     def test_public_header_including_the_port_is_reported(self) -> None:
         root = make_tree(
-            {**CLEAN_TREE, "include/fdswu/heads.h": '#include "port/registers.h"\n'}
+            {
+                **CLEAN_TREE,
+                "include/fdswu/write_plan.h": '#include "port/registers.h"\n',
+            }
         )
 
         violations = layer_check.violations(root)
@@ -56,11 +60,11 @@ class ViolationTest(unittest.TestCase):
         self.assertEqual([v.included for v in violations], ["port/registers.h"])
 
     def test_including_a_source_file_is_reported(self) -> None:
-        root = make_tree({**CLEAN_TREE, "src/main.c": '#include "heads.c"\n'})
+        root = make_tree({**CLEAN_TREE, "src/main.c": '#include "write_plan.c"\n'})
 
         violations = layer_check.violations(root)
 
-        self.assertEqual([v.included for v in violations], ["heads.c"])
+        self.assertEqual([v.included for v in violations], ["write_plan.c"])
 
 
 class PlatformCTest(unittest.TestCase):
@@ -77,7 +81,7 @@ class PlatformCTest(unittest.TestCase):
 class MainTest(unittest.TestCase):
     def test_exit_code_reflects_violations(self) -> None:
         clean = make_tree(CLEAN_TREE)
-        dirty = make_tree({**CLEAN_TREE, "src/heads.c": "#include <avr/io.h>\n"})
+        dirty = make_tree({**CLEAN_TREE, "src/write_plan.c": "#include <avr/io.h>\n"})
 
         with unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors:
             codes = (
@@ -86,7 +90,7 @@ class MainTest(unittest.TestCase):
             )
 
         self.assertEqual(codes, (0, 1))
-        self.assertIn("heads.c", errors.getvalue())
+        self.assertIn("write_plan.c", errors.getvalue())
 
 
 if __name__ == "__main__":

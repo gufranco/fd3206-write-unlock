@@ -28,8 +28,8 @@ enum {
     HANG_OPCODE_LOW = 0xFF,
     HANG_OPCODE_HIGH = 0xCF,
     WATCHDOG_CONTROL_ADDRESS = 0x41,
-    HEAD1_BIT = 3,
-    HEAD2_BIT = 2
+    LINE1_BIT = 3,
+    LINE2_BIT = 2
 };
 
 typedef struct {
@@ -47,8 +47,8 @@ static const pin_t SIGNAL_PINS[SIGNAL_COUNT] = {
 struct board {
     avr_t *avr;
     avr_irq_t *inputs[SIGNAL_COUNT];
-    board_heads_t last_heads;
-    uint64_t last_head_change_cycle;
+    board_lines_t last_write_lines;
+    uint64_t last_line_change_cycle;
     uint32_t resets;
     bool started;
     uint8_t driven_mask[PORT_COUNT];
@@ -71,32 +71,32 @@ static bool bit_set(uint8_t value, uint8_t bit) {
     return (value >> bit) & 1u;
 }
 
-static board_heads_t classify_heads(bool head1_enabled, bool head1_low, bool head2_enabled, bool head2_low) {
-    const bool pulled1 = head1_enabled && head1_low;
-    const bool pulled2 = head2_enabled && head2_low;
-    if ((head1_enabled && !head1_low) || (head2_enabled && !head2_low)) {
-        return HEADS_DRIVEN_HIGH;
+static board_lines_t classify_write_lines(bool line1_enabled, bool line1_low, bool line2_enabled, bool line2_low) {
+    const bool pulled1 = line1_enabled && line1_low;
+    const bool pulled2 = line2_enabled && line2_low;
+    if ((line1_enabled && !line1_low) || (line2_enabled && !line2_low)) {
+        return LINES_DRIVEN_HIGH;
     }
     if (pulled1 && pulled2) {
-        return HEADS_BOTH_LOW;
+        return LINES_BOTH_LOW;
     }
     if (pulled1) {
-        return HEADS_HEAD1_LOW;
+        return LINES_LINE1_LOW;
     }
-    return pulled2 ? HEADS_HEAD2_LOW : HEADS_RELEASED;
+    return pulled2 ? LINES_LINE2_LOW : LINES_RELEASED;
 }
 
-board_heads_t board_heads(const board_t *board) {
+board_lines_t board_lines(const board_t *board) {
     const avr_ioport_state_t port_b = port_state(board, 'B');
-    return classify_heads(bit_set((uint8_t)port_b.ddr, HEAD1_BIT), !bit_set((uint8_t)port_b.port, HEAD1_BIT),
-                          bit_set((uint8_t)port_b.ddr, HEAD2_BIT), !bit_set((uint8_t)port_b.port, HEAD2_BIT));
+    return classify_write_lines(bit_set((uint8_t)port_b.ddr, LINE1_BIT), !bit_set((uint8_t)port_b.port, LINE1_BIT),
+                                bit_set((uint8_t)port_b.ddr, LINE2_BIT), !bit_set((uint8_t)port_b.port, LINE2_BIT));
 }
 
-static void track_heads(board_t *board) {
-    const board_heads_t heads = board_heads(board);
-    if (heads != board->last_heads) {
-        board->last_heads = heads;
-        board->last_head_change_cycle = board->avr->cycle;
+static void track_write_lines(board_t *board) {
+    const board_lines_t lines = board_lines(board);
+    if (lines != board->last_write_lines) {
+        board->last_write_lines = lines;
+        board->last_line_change_cycle = board->avr->cycle;
     }
 }
 
@@ -117,7 +117,7 @@ static void step(board_t *board) {
     if (board->started && depth > deepest_stack) {
         deepest_stack = depth;
     }
-    track_heads(board);
+    track_write_lines(board);
 }
 
 static avr_t *load_avr(const char *mcu, const char *elf_path, uint32_t frequency_hz) {
@@ -197,7 +197,7 @@ board_t *board_open(const char *mcu, const char *elf_path, uint32_t frequency_hz
         return NULL;
     }
     board->avr = avr;
-    board->last_heads = HEADS_RELEASED;
+    board->last_write_lines = LINES_RELEASED;
     wire_inputs(board);
     avr_register_io_write(avr, CLOCK_PRESCALER_ADDRESS, clock_prescaler_write, board);
     power_on_unfused(board);
@@ -218,7 +218,7 @@ void board_close(board_t *board) {
 void board_set(board_t *board, board_signal_t signal, board_level_t level) {
     drive_pin(board, SIGNAL_PINS[signal], level);
     avr_raise_irq(board->inputs[signal], level);
-    track_heads(board);
+    track_write_lines(board);
 }
 
 void board_run_cycles(board_t *board, uint64_t cycles) {
@@ -236,8 +236,8 @@ uint64_t board_cycle(const board_t *board) {
     return board->avr->cycle;
 }
 
-uint64_t board_last_head_change_cycle(const board_t *board) {
-    return board->last_head_change_cycle;
+uint64_t board_last_line_change_cycle(const board_t *board) {
+    return board->last_line_change_cycle;
 }
 
 uint8_t board_port_directions(const board_t *board, char port) {
@@ -282,7 +282,7 @@ void board_reset(board_t *board) {
         drive_pin(board, pin, level);
         avr_raise_irq(board->inputs[signal], level);
     }
-    track_heads(board);
+    track_write_lines(board);
 }
 
 uint16_t board_deepest_stack(void) {

@@ -11,11 +11,11 @@ from tools import list_instructions
 NM_OUTPUT = """
 build/main.o:
 00000000 T main
-00000000 t apply_heads
+00000000 t apply_write_lines
 00000000 D some_data
 
-build/heads.o:
-00000000 T fdswu_heads_plan
+build/write_plan.o:
+00000000 T fdswu_write_plan
 """
 
 OBJDUMP_OUTPUT = """
@@ -29,7 +29,7 @@ OBJDUMP_OUTPUT = """
   4a:\t00 00       \tnop
   4c:\t8f e9       \tldi\tr24, 0x9F
   4e:\t00 00       \t.word\t0x0000
-00000050 <apply_heads.lto_priv.0>:
+00000050 <apply_write_lines.lto_priv.0>:
   50:\t08 95       \tret
 """
 
@@ -42,19 +42,19 @@ class FunctionNamesTest(unittest.TestCase):
     def test_keeps_text_symbols_and_drops_data(self) -> None:
         names = list_instructions.function_names(NM_OUTPUT)
 
-        self.assertEqual(names, {"main", "apply_heads", "fdswu_heads_plan"})
+        self.assertEqual(names, {"main", "apply_write_lines", "fdswu_write_plan"})
 
 
 class BaseNameTest(unittest.TestCase):
     def test_strips_link_time_suffixes(self) -> None:
-        name = list_instructions.base_name("apply_heads.lto_priv.0")
+        name = list_instructions.base_name("apply_write_lines.lto_priv.0")
 
-        self.assertEqual(name, "apply_heads")
+        self.assertEqual(name, "apply_write_lines")
 
 
 class InstructionAddressesTest(unittest.TestCase):
     def test_lists_executable_instructions_of_owned_functions(self) -> None:
-        owned = {"main", "apply_heads", "__vector_1"}
+        owned = {"main", "apply_write_lines", "__vector_1"}
 
         lines = list_instructions.instruction_addresses(OBJDUMP_OUTPUT, owned)
 
@@ -64,7 +64,7 @@ class InstructionAddressesTest(unittest.TestCase):
                 (0x48, "__vector_1"),
                 (0x49, "__vector_1"),
                 (0x4C, "main"),
-                (0x50, "apply_heads.lto_priv.0"),
+                (0x50, "apply_write_lines.lto_priv.0"),
             ],
         )
 
@@ -106,7 +106,7 @@ class MainTest(unittest.TestCase):
             )
 
         self.assertEqual(exit_code, 0)
-        printed.assert_called_once_with("76 main\n80 apply_heads.lto_priv.0")
+        printed.assert_called_once_with("76 main\n80 apply_write_lines.lto_priv.0")
 
 
 if __name__ == "__main__":

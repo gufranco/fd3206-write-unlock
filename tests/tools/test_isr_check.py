@@ -32,7 +32,7 @@ HANDLER = """
 """
 
 COMMIT = """
-000000d0 <fdswu_port_commit_heads>:
+000000d0 <fdswu_port_commit_write_lines>:
   d0:\tf8 94       \tcli
   d2:\ta8 99       \tsbic\t0x15, 0\t; 21
   d4:\t05 c0       \trjmp\t.+10     \t; 0xe0 <.Lcommit_set>
@@ -79,7 +79,7 @@ class HandlerTest(unittest.TestCase):
 class CommitTest(unittest.TestCase):
     def test_window_runs_from_cli_through_the_instruction_after_sei(self) -> None:
         cycles = isr_check.window_cycles(
-            isr_check.instructions(COMMIT, "fdswu_port_commit_heads")
+            isr_check.instructions(COMMIT, "fdswu_port_commit_write_lines")
         )
 
         self.assertEqual(cycles, 12)
@@ -141,7 +141,7 @@ class MainTest(unittest.TestCase):
         code, _, err = self.run_main("33", "12", listing=HANDLER)
 
         self.assertEqual(code, 1)
-        self.assertIn("fdswu_port_commit_heads not found", err)
+        self.assertIn("fdswu_port_commit_write_lines not found", err)
 
     def test_wrong_arguments_print_usage(self) -> None:
         with unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as err:

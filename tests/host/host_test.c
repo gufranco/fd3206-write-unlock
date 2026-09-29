@@ -8,22 +8,22 @@
 #include <stdlib.h>
 
 #include "fdswu/conditions.h"
-#include "fdswu/heads.h"
 #include "fdswu/pins.h"
+#include "fdswu/write_plan.h"
 
 #define PORT_VALUES ((uint16_t)256U)
 
 typedef struct {
     bool toggled;
     bool allowed;
-    fdswu_heads_plan_t expected;
+    fdswu_write_plan_t expected;
 } plan_case_t;
 
 static const plan_case_t PLAN_CASES[] = {
     {false, false, {0U, 0U, 0U}},
     {true, false, {0U, 0U, 0U}},
-    {false, true, {FDSWU_HEAD1_MASK, FDSWU_HEAD2_MASK, FDSWU_HEAD1_MASK}},
-    {true, true, {FDSWU_HEAD2_MASK, FDSWU_HEAD1_MASK, FDSWU_HEAD2_MASK}},
+    {false, true, {FDSWU_WRITE_LINE1_MASK, FDSWU_WRITE_LINE2_MASK, FDSWU_WRITE_LINE1_MASK}},
+    {true, true, {FDSWU_WRITE_LINE2_MASK, FDSWU_WRITE_LINE1_MASK, FDSWU_WRITE_LINE2_MASK}},
 };
 
 static uint32_t failures;
@@ -35,11 +35,11 @@ static void expect(bool holds, const char *what, uint32_t detail) {
     }
 }
 
-static void plan_selects_one_head_per_toggle_state(void) {
+static void plan_selects_one_line_per_toggle_state(void) {
     for (size_t index = 0U; index < sizeof PLAN_CASES / sizeof PLAN_CASES[0]; index++) {
         const plan_case_t test = PLAN_CASES[index];
 
-        const fdswu_heads_plan_t plan = fdswu_heads_plan(test.toggled, test.allowed);
+        const fdswu_write_plan_t plan = fdswu_write_plan(test.toggled, test.allowed);
 
         expect(plan.now == test.expected.now, "plan.now", (uint32_t)index);
         expect(plan.next_edge == test.expected.next_edge, "plan.next_edge", (uint32_t)index);
@@ -66,7 +66,7 @@ static void conditions_allow_only_when_all_three_are_low(void) {
 }
 
 int main(void) {
-    plan_selects_one_head_per_toggle_state();
+    plan_selects_one_line_per_toggle_state();
     conditions_allow_only_when_all_three_are_low();
     printf("host tests: %lu failures\n", (unsigned long)failures);
     return failures == 0U ? EXIT_SUCCESS : EXIT_FAILURE;

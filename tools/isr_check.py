@@ -13,7 +13,7 @@ LINE = re.compile(
 )
 REGISTER = re.compile(r"\br(\d+)\b")
 HANDLER_SYMBOL = "__vector_1"
-COMMIT_SYMBOL = "fdswu_port_commit_heads"
+COMMIT_SYMBOL = "fdswu_port_commit_write_lines"
 HANDLER_MNEMONICS = frozenset(
     {"push", "pop", "in", "out", "sbis", "sbic", "sbi", "cbi", "rjmp", "reti"}
 )

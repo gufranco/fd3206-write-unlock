@@ -42,20 +42,20 @@ fdswu_port_poll:
     in rWork, _SFR_IO_ADDR(PINB)
     ret
 
-    .section .text.fdswu_port_commit_heads,"ax",@progbits
-    .global fdswu_port_commit_heads
-fdswu_port_commit_heads:
+    .section .text.fdswu_port_commit_write_lines,"ax",@progbits
+    .global fdswu_port_commit_write_lines
+fdswu_port_commit_write_lines:
     cli
     sbic _SFR_IO_ADDR(FDSWU_TOGGLE_STATE), FDSWU_TOGGLE_BIT
     rjmp .Lcommit_set
-    out _SFR_IO_ADDR(FDSWU_HEAD_DIRECTION), rFirst
-    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_HEADS), rSecond
-    out _SFR_IO_ADDR(FDSWU_LATER_EDGE_HEADS), rThird
+    out _SFR_IO_ADDR(FDSWU_WRITE_LINE_DIRECTION), rFirst
+    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_LINES), rSecond
+    out _SFR_IO_ADDR(FDSWU_LATER_EDGE_LINES), rThird
     sei
     ret
 .Lcommit_set:
-    out _SFR_IO_ADDR(FDSWU_HEAD_DIRECTION), rFourth
-    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_HEADS), rFifth
-    out _SFR_IO_ADDR(FDSWU_LATER_EDGE_HEADS), rSixth
+    out _SFR_IO_ADDR(FDSWU_WRITE_LINE_DIRECTION), rFourth
+    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_LINES), rFifth
+    out _SFR_IO_ADDR(FDSWU_LATER_EDGE_LINES), rSixth
     sei
     ret

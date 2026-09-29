@@ -21,12 +21,12 @@ typedef enum {
 } board_level_t;
 
 typedef enum {
-    HEADS_RELEASED,
-    HEADS_HEAD1_LOW,
-    HEADS_HEAD2_LOW,
-    HEADS_BOTH_LOW,
-    HEADS_DRIVEN_HIGH
-} board_heads_t;
+    LINES_RELEASED,
+    LINES_LINE1_LOW,
+    LINES_LINE2_LOW,
+    LINES_BOTH_LOW,
+    LINES_DRIVEN_HIGH
+} board_lines_t;
 
 typedef struct board board_t;
 
@@ -36,8 +36,8 @@ void board_set(board_t *board, board_signal_t signal, board_level_t level);
 void board_run_cycles(board_t *board, uint64_t cycles);
 uint64_t board_frequency_hz(const board_t *board);
 uint64_t board_cycle(const board_t *board);
-board_heads_t board_heads(const board_t *board);
-uint64_t board_last_head_change_cycle(const board_t *board);
+board_lines_t board_lines(const board_t *board);
+uint64_t board_last_line_change_cycle(const board_t *board);
 uint8_t board_port_directions(const board_t *board, char port);
 uint8_t board_port_levels(const board_t *board, char port);
 uint8_t board_clock_prescaler(const board_t *board);

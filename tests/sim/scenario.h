@@ -29,7 +29,7 @@ enum {
     WATCHDOG_ARMED_60MS = 0x0A,
     WATCHDOG_RESET_FLAG = 0x08,
     WATCHDOG_STALL_NS = 100000000,
-    HEAD_PIN_BITS_B = 0x0C,
+    WRITE_LINE_PIN_BITS_B = 0x0C,
     READY_PIN_BIT_B = 0x02,
     CONDITION_PIN_BITS_A = 0x03,
     WRITE_DATA_PIN_BIT_D = 0x04
@@ -48,11 +48,11 @@ extern const write_conditions_t NOT_READY;
 
 typedef struct {
     uint32_t released;
-    uint32_t one_head_low;
+    uint32_t one_line_low;
     uint32_t repeats;
     uint32_t invalid;
     uint32_t driven_high;
-} head_census_t;
+} line_census_t;
 
 #define CHECK(condition)                                                                                               \
     do {                                                                                                               \
@@ -68,8 +68,8 @@ void run_ns(board_t *board, uint64_t ns);
 uint64_t cycles_to_ns(const board_t *board, uint64_t cycles);
 void apply_conditions(board_t *board, write_conditions_t conditions);
 void write_pulse(board_t *board, uint64_t period_ns);
-bool one_head_low(board_heads_t heads);
-head_census_t census_heads(board_t *board, uint32_t edges, uint64_t period_ns);
+bool one_line_low(board_lines_t lines);
+line_census_t census_lines(board_t *board, uint32_t edges, uint64_t period_ns);
 uint64_t response_ns(board_t *board, board_signal_t signal, board_level_t level);
 
 #endif

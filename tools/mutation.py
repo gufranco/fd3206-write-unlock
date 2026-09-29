@@ -99,7 +99,7 @@ MUTANTS = (
         "((uint8_t)0x7BU)",
     ),
     Mutant(
-        "head latch set, so an enabled head drives high",
+        "write line latch set, so an enabled line drives high",
         "src/port.S",
         "    out _SFR_IO_ADDR(PORTB), rSecond\n",
         "    ori rSecond, 0x0C\n    out _SFR_IO_ADDR(PORTB), rSecond\n",
@@ -135,10 +135,10 @@ MUTANTS = (
         "",
     ),
     Mutant(
-        "heads stay enabled when writing is not allowed",
-        "src/heads.c",
-        "allowed ? FDSWU_HEADS_MASK : 0U",
-        "allowed ? FDSWU_HEADS_MASK : FDSWU_HEADS_MASK",
+        "write lines stay enabled when writing is not allowed",
+        "src/write_plan.c",
+        "allowed ? FDSWU_WRITE_LINES_MASK : 0U",
+        "allowed ? FDSWU_WRITE_LINES_MASK : FDSWU_WRITE_LINES_MASK",
     ),
     Mutant(
         "interrupts left off after an update",
@@ -147,15 +147,15 @@ MUTANTS = (
         "    ret\n.Lcommit_set:",
     ),
     Mutant(
-        "head plan assertion inverted",
-        "src/heads.c",
+        "write plan assertion inverted",
+        "src/write_plan.c",
         "FDSWU_ASSERT((plan.now & plan.next_edge) == 0U);",
         "FDSWU_ASSERT((plan.now & plan.next_edge) != 0U);",
     ),
     Mutant(
         "edge handler stops advancing the plan",
         "src/write_data_edge.S",
-        "    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_HEADS), rAfter\n",
+        "    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_LINES), rAfter\n",
         "",
     ),
 )

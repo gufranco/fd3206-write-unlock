@@ -52,23 +52,23 @@ void write_pulse(board_t *board, uint64_t period_ns) {
     run_ns(board, period_ns - WRITE_PULSE_LOW_NS);
 }
 
-bool one_head_low(board_heads_t heads) {
-    return heads == HEADS_HEAD1_LOW || heads == HEADS_HEAD2_LOW;
+bool one_line_low(board_lines_t lines) {
+    return lines == LINES_LINE1_LOW || lines == LINES_LINE2_LOW;
 }
 
-head_census_t census_heads(board_t *board, uint32_t edges, uint64_t period_ns) {
-    head_census_t census = {0};
-    board_heads_t previous = board_heads(board);
+line_census_t census_lines(board_t *board, uint32_t edges, uint64_t period_ns) {
+    line_census_t census = {0};
+    board_lines_t previous = board_lines(board);
     for (uint32_t edge = 0; edge < edges; edge++) {
         write_pulse(board, period_ns);
-        const board_heads_t heads = board_heads(board);
-        census.released += heads == HEADS_RELEASED;
-        census.one_head_low += one_head_low(heads);
-        census.repeats += one_head_low(heads) && heads == previous;
-        census.invalid += heads != HEADS_RELEASED && !one_head_low(heads);
+        const board_lines_t lines = board_lines(board);
+        census.released += lines == LINES_RELEASED;
+        census.one_line_low += one_line_low(lines);
+        census.repeats += one_line_low(lines) && lines == previous;
+        census.invalid += lines != LINES_RELEASED && !one_line_low(lines);
         census.driven_high +=
-            (board_port_directions(board, 'B') & board_port_levels(board, 'B') & HEAD_PIN_BITS_B) != 0;
-        previous = heads;
+            (board_port_directions(board, 'B') & board_port_levels(board, 'B') & WRITE_LINE_PIN_BITS_B) != 0;
+        previous = lines;
     }
     return census;
 }
@@ -77,5 +77,5 @@ uint64_t response_ns(board_t *board, board_signal_t signal, board_level_t level)
     const uint64_t start = board_cycle(board);
     board_set(board, signal, level);
     run_ns(board, SETTLE_NS);
-    return cycles_to_ns(board, board_last_head_change_cycle(board) - start);
+    return cycles_to_ns(board, board_last_line_change_cycle(board) - start);
 }

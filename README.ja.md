@@ -370,17 +370,17 @@ gh attestation verify fd3206-write-unlock.hex --repo gufranco/fd3206-write-unloc
 
 | 資料 | 採った事実 |
 |---|---|
-| Famicom World「Famicom Disk System FD3206 Write Mod」 | 注記付きの基板写真にある FD3206P の +5 V、GND、/READY、/WRITE GATE、/WRITABLE MEDIA、WRITE DATA のパッド、14 番と 15 番ピンのヘッド配線、74LS76 と 74LS45 の回路図にあるヘッド駆動の動作 |
-| Famicom World「FDS Power Board Modifications」 | 書き込み制限を持つ電源基板の版と、それぞれの外し方 |
-| nesdev フォーラムのスレッド 11342、17037、19856 と「Disable copy protection on the Twin Famicom AN-505BK」 | ツインファミコンの電源基板の改造と機種別の報告 |
-| Brad Taylor「Famicom Disk System technical reference」、nesdev.org | 96.4 kHz のビットレート、10 パーセントの許容差、1 us のパルス、信号名 |
-| nesdev wiki「FDS RAM adaptor cable pinout」と「FDS disk format」 | 信号名と極性、ギャップ長 |
-| Microchip 資料 8246、ATtiny2313A/4313 | ピン配置、入出力レベル、割り込み、ウォッチドッグと分周器の時間制限付き手順、発振器の精度、電源電圧範囲、ピン電流 |
-| nesdev フォーラム、FMD-POWER-05 の解析済み回路図 | ドライブ基板に届く電源は +5 V とモーター用 +5 V だけであること、/write の 10 kΩ プルアップ、信号名 /writable media |
-| avrdude 8 のデバイスデータベース | ヒューズビットの意味と工場出荷値 |
-| FDSStick と ToToTEK の FD3206 V4 アドオンチップの製品ページ | 8 か所のはんだ付けと 1 番から 19 番へのジャンパが写った取り付け写真。上記の比較にのみ使用 |
+| Famicom World「[Famicom Disk System FD3206 Write Mod](https://famicomworld.com/workshop/tech/famicom-disk-system-fd3206-write-mod/)」 | 注記付きの基板写真にある FD3206P の +5 V、GND、/READY、/WRITE GATE、/WRITABLE MEDIA、WRITE DATA のパッド、14 番と 15 番ピンのヘッド配線、74LS76 と 74LS45 の回路図にあるヘッド駆動の動作 |
+| Famicom World「[FDS Power Board Modifications](https://famicomworld.com/workshop/tech/fds-power-board-modifications/)」 | 書き込み制限を持つ電源基板の版と、それぞれの外し方 |
+| nesdev フォーラムのスレッド [11342](https://forums.nesdev.org/viewtopic.php?t=11342)、[17037](https://forums.nesdev.org/viewtopic.php?t=17037)、[19856](https://forums.nesdev.org/viewtopic.php?t=19856) と「[Disable copy protection on the Twin Famicom AN-505BK](https://forums.nesdev.org/viewtopic.php?p=310336)」 | ツインファミコンの電源基板の改造と機種別の報告 |
+| Brad Taylor「[Famicom Disk System technical reference](https://www.nesdev.org/FDS%20technical%20reference.txt)」、nesdev.org | 96.4 kHz のビットレート、10 パーセントの許容差、1 us のパルス、信号名 |
+| nesdev wiki「[FDS RAM adaptor cable pinout](https://www.nesdev.org/wiki/FDS_RAM_adaptor_cable_pinout)」と「[FDS disk format](https://www.nesdev.org/wiki/FDS_disk_format)」 | 信号名と極性、ギャップ長 |
+| Microchip 資料 8246、[ATtiny2313A/4313](https://ww1.microchip.com/downloads/en/DeviceDoc/doc8246.pdf) | ピン配置、入出力レベル、割り込み、ウォッチドッグと分周器の時間制限付き手順、発振器の精度、電源電圧範囲、ピン電流 |
+| nesdev フォーラム、[FMD-POWER-05](https://forums.nesdev.org/viewtopic.php?t=17881) の解析済み回路図 | ドライブ基板に届く電源は +5 V とモーター用 +5 V だけであること、/write の 10 kΩ プルアップ、信号名 /writable media |
+| [avrdude 8](https://github.com/avrdudes/avrdude/blob/main/src/avrdude.conf.in) のデバイスデータベース | ヒューズビットの意味と工場出荷値 |
+| [FDSStick](https://www.fdsstick.com/the-latest-fd3206-modchip-v4-no-need-any-wires/) と [ToToTEK](https://www.tototek.com/store/index.php?main_page=product_info&products_id=228) の FD3206 V4 アドオンチップの製品ページ | 8 か所のはんだ付けと 1 番から 19 番へのジャンパが写った取り付け写真。上記の比較にのみ使用 |
 
-Stephen-Arsenault/FDS-FD3206-Modchip、CC BY-SA 4.0 は、同じコントローラにプログラマブルロジックを載せるプロジェクトです。そのファイル、ソース、写真、文書、名称はここに一切含まれておらず、コントローラのピン番号も同プロジェクトからではなく Famicom World の基板写真で確認しています。機能が同じなのはドライブの機能だからです。表現は異なります。GAL は組み合わせ論理と、線の折り返しでクロックを入れるレジスタで、こちらは C のメインループと、事前計算した 2 つのポート値を入れ替えてピンをオープンドレインで駆動するアセンブリの割り込み処理です。4 行以上一致する箇所はなく、ファームウェアに第三者のコードは含まれていません。
+[Stephen-Arsenault/FDS-FD3206-Modchip](https://github.com/Stephen-Arsenault/FDS-FD3206-Modchip)、CC BY-SA 4.0 は、同じコントローラにプログラマブルロジックを載せるプロジェクトです。そのファイル、ソース、写真、文書、名称はここに一切含まれておらず、コントローラのピン番号も同プロジェクトからではなく Famicom World の基板写真で確認しています。機能が同じなのはドライブの機能だからです。表現は異なります。GAL は組み合わせ論理と、線の折り返しでクロックを入れるレジスタで、こちらは C のメインループと、事前計算した 2 つのポート値を入れ替えてピンをオープンドレインで駆動するアセンブリの割り込み処理です。4 行以上一致する箇所はなく、ファームウェアに第三者のコードは含まれていません。
 
 ## ライセンス
 

@@ -369,17 +369,17 @@ Written independently from public documentation. Only these sources informed the
 
 | Source | Facts taken |
 |:--|:--|
-| Famicom World, "Famicom Disk System FD3206 Write Mod" | FD3206P pads for +5 V, GND, /READY, /WRITE GATE, /WRITABLE MEDIA, WRITE DATA from its labelled board photos, where pin 5 reads /WRITE PROTECT; head traces at pins 14 and 15; head drive behaviour of its 74LS76 and 74LS45 schematic |
-| Famicom World, "FDS Power Board Modifications" | Which power board revisions carry a write lockout and how each is removed |
-| nesdev forum threads 11342, 17037, 19856 and "Disable copy protection on the Twin Famicom AN-505BK" | The Twin Famicom power board change and per-model reports |
-| Brad Taylor, "Famicom Disk System technical reference", nesdev.org | 96.4 kHz bit rate, 10 percent tolerance, 1 us pulses, signal names |
-| nesdev wiki, "FDS RAM adaptor cable pinout" and "FDS disk format" | Signal names and polarities, gap lengths |
-| Microchip document 8246, ATtiny2313A/4313 | Pinout, input and output levels, interrupts, timed watchdog and prescaler sequences, oscillator accuracy, supply range, pin current |
-| nesdev forum, FMD-POWER-05 reverse-engineered schematic | Only +5 V and the +5 V motor rail reach the drive board; a 10 kOhm pull-up on /write; the signal name /writable media |
-| avrdude 8 part database | Fuse bit meanings and factory values |
-| FDSStick and ToToTEK product pages for the FD3206 V4 add-on chip | Install photo showing eight soldered pins and a pin 1 to pin 19 jumper, for the comparison only |
+| Famicom World, "[Famicom Disk System FD3206 Write Mod](https://famicomworld.com/workshop/tech/famicom-disk-system-fd3206-write-mod/)" | FD3206P pads for +5 V, GND, /READY, /WRITE GATE, /WRITABLE MEDIA, WRITE DATA from its labelled board photos, where pin 5 reads /WRITE PROTECT; head traces at pins 14 and 15; head drive behaviour of its 74LS76 and 74LS45 schematic |
+| Famicom World, "[FDS Power Board Modifications](https://famicomworld.com/workshop/tech/fds-power-board-modifications/)" | Which power board revisions carry a write lockout and how each is removed |
+| nesdev forum threads [11342](https://forums.nesdev.org/viewtopic.php?t=11342), [17037](https://forums.nesdev.org/viewtopic.php?t=17037), [19856](https://forums.nesdev.org/viewtopic.php?t=19856) and "[Disable copy protection on the Twin Famicom AN-505BK](https://forums.nesdev.org/viewtopic.php?p=310336)" | The Twin Famicom power board change and per-model reports |
+| Brad Taylor, "[Famicom Disk System technical reference](https://www.nesdev.org/FDS%20technical%20reference.txt)", nesdev.org | 96.4 kHz bit rate, 10 percent tolerance, 1 us pulses, signal names |
+| nesdev wiki, "[FDS RAM adaptor cable pinout](https://www.nesdev.org/wiki/FDS_RAM_adaptor_cable_pinout)" and "[FDS disk format](https://www.nesdev.org/wiki/FDS_disk_format)" | Signal names and polarities, gap lengths |
+| Microchip document 8246, [ATtiny2313A/4313](https://ww1.microchip.com/downloads/en/DeviceDoc/doc8246.pdf) | Pinout, input and output levels, interrupts, timed watchdog and prescaler sequences, oscillator accuracy, supply range, pin current |
+| nesdev forum, [FMD-POWER-05](https://forums.nesdev.org/viewtopic.php?t=17881) reverse-engineered schematic | Only +5 V and the +5 V motor rail reach the drive board; a 10 kOhm pull-up on /write; the signal name /writable media |
+| [avrdude 8](https://github.com/avrdudes/avrdude/blob/main/src/avrdude.conf.in) part database | Fuse bit meanings and factory values |
+| [FDSStick](https://www.fdsstick.com/the-latest-fd3206-modchip-v4-no-need-any-wires/) and [ToToTEK](https://www.tototek.com/store/index.php?main_page=product_info&products_id=228) product pages for the FD3206 V4 add-on chip | Install photo showing eight soldered pins and a pin 1 to pin 19 jumper, for the comparison only |
 
-Stephen-Arsenault/FDS-FD3206-Modchip, CC BY-SA 4.0, puts a programmable logic device on the same controller. No file, source text, photo, documentation text or name from it appears here, and the controller pin numbers were confirmed against the Famicom World board photos, not taken from it. The function is the same because it is the drive's function; the expression differs: the GAL is combinational logic and a register clocked through a wire loop, this is a C main loop and an assembly interrupt that swaps two precomputed port values and drives the pins open-drain. No block of four or more lines matches, and the firmware contains no third-party code.
+[Stephen-Arsenault/FDS-FD3206-Modchip](https://github.com/Stephen-Arsenault/FDS-FD3206-Modchip), CC BY-SA 4.0, puts a programmable logic device on the same controller. No file, source text, photo, documentation text or name from it appears here, and the controller pin numbers were confirmed against the Famicom World board photos, not taken from it. The function is the same because it is the drive's function; the expression differs: the GAL is combinational logic and a register clocked through a wire loop, this is a C main loop and an assembly interrupt that swaps two precomputed port values and drives the pins open-drain. No block of four or more lines matches, and the firmware contains no third-party code.
 
 ## License
 

@@ -370,17 +370,17 @@ gh attestation verify fd3206-write-unlock.hex --repo gufranco/fd3206-write-unloc
 
 | 资料 | 采用的事实 |
 |---|---|
-| Famicom World，"Famicom Disk System FD3206 Write Mod" | 其带标注的电路板照片中 FD3206P 的 +5 V、GND、/READY、/WRITE GATE、/WRITABLE MEDIA、WRITE DATA 焊盘；14、15 脚的磁头走线；其 74LS76 与 74LS45 原理图中的磁头驱动行为 |
-| Famicom World，"FDS Power Board Modifications" | 哪些电源板版本带有写入锁定，以及各自的解除方法 |
-| nesdev 论坛帖子 11342、17037、19856 及 "Disable copy protection on the Twin Famicom AN-505BK" | Twin Famicom 电源板的改造方法与各机型的报告 |
-| Brad Taylor，"Famicom Disk System technical reference"，nesdev.org | 96.4 kHz 位速率、10% 容差、1 us 脉冲、信号名称 |
-| nesdev wiki，"FDS RAM adaptor cable pinout" 与 "FDS disk format" | 信号名称与极性、间隙长度 |
-| Microchip 文档 8246，ATtiny2313A/4313 | 引脚排列、输入输出电平、中断、看门狗与分频器的定时写入顺序、振荡器精度、电源电压范围、引脚电流 |
-| nesdev 论坛，FMD-POWER-05 逆向原理图 | 送到驱动板的电源只有 +5 V 和电机用 +5 V；/write 上的 10 kΩ 上拉；信号名 /writable media |
-| avrdude 8 器件数据库 | 熔丝位的含义与出厂值 |
-| FDSStick 与 ToToTEK 的 FD3206 V4 附加芯片产品页面 | 显示 8 个焊点和 1 脚到 19 脚跳线的安装照片，仅用于上文的比较 |
+| Famicom World，"[Famicom Disk System FD3206 Write Mod](https://famicomworld.com/workshop/tech/famicom-disk-system-fd3206-write-mod/)" | 其带标注的电路板照片中 FD3206P 的 +5 V、GND、/READY、/WRITE GATE、/WRITABLE MEDIA、WRITE DATA 焊盘；14、15 脚的磁头走线；其 74LS76 与 74LS45 原理图中的磁头驱动行为 |
+| Famicom World，"[FDS Power Board Modifications](https://famicomworld.com/workshop/tech/fds-power-board-modifications/)" | 哪些电源板版本带有写入锁定，以及各自的解除方法 |
+| nesdev 论坛帖子 [11342](https://forums.nesdev.org/viewtopic.php?t=11342)、[17037](https://forums.nesdev.org/viewtopic.php?t=17037)、[19856](https://forums.nesdev.org/viewtopic.php?t=19856) 及 "[Disable copy protection on the Twin Famicom AN-505BK](https://forums.nesdev.org/viewtopic.php?p=310336)" | Twin Famicom 电源板的改造方法与各机型的报告 |
+| Brad Taylor，"[Famicom Disk System technical reference](https://www.nesdev.org/FDS%20technical%20reference.txt)"，nesdev.org | 96.4 kHz 位速率、10% 容差、1 us 脉冲、信号名称 |
+| nesdev wiki，"[FDS RAM adaptor cable pinout](https://www.nesdev.org/wiki/FDS_RAM_adaptor_cable_pinout)" 与 "[FDS disk format](https://www.nesdev.org/wiki/FDS_disk_format)" | 信号名称与极性、间隙长度 |
+| Microchip 文档 8246，[ATtiny2313A/4313](https://ww1.microchip.com/downloads/en/DeviceDoc/doc8246.pdf) | 引脚排列、输入输出电平、中断、看门狗与分频器的定时写入顺序、振荡器精度、电源电压范围、引脚电流 |
+| nesdev 论坛，[FMD-POWER-05](https://forums.nesdev.org/viewtopic.php?t=17881) 逆向原理图 | 送到驱动板的电源只有 +5 V 和电机用 +5 V；/write 上的 10 kΩ 上拉；信号名 /writable media |
+| [avrdude 8](https://github.com/avrdudes/avrdude/blob/main/src/avrdude.conf.in) 器件数据库 | 熔丝位的含义与出厂值 |
+| [FDSStick](https://www.fdsstick.com/the-latest-fd3206-modchip-v4-no-need-any-wires/) 与 [ToToTEK](https://www.tototek.com/store/index.php?main_page=product_info&products_id=228) 的 FD3206 V4 附加芯片产品页面 | 显示 8 个焊点和 1 脚到 19 脚跳线的安装照片，仅用于上文的比较 |
 
-Stephen-Arsenault/FDS-FD3206-Modchip（CC BY-SA 4.0）在同一控制器上叠放可编程逻辑器件。本项目不含该项目的任何文件、源代码、照片、文档文字或名称；控制器的引脚编号是对照 Famicom World 的电路板照片确认的，而非取自该项目。两者功能相同，因为那是驱动器本身的功能；实现方式不同：GAL 是组合逻辑加一个通过导线回接获得时钟的寄存器，本项目则是 C 语言主循环加一段汇编中断处理程序，交换两个预先算好的端口值，并以开漏方式驱动引脚。没有任何连续 4 行以上的代码相同，固件中也不含第三方代码。
+[Stephen-Arsenault/FDS-FD3206-Modchip](https://github.com/Stephen-Arsenault/FDS-FD3206-Modchip)（CC BY-SA 4.0）在同一控制器上叠放可编程逻辑器件。本项目不含该项目的任何文件、源代码、照片、文档文字或名称；控制器的引脚编号是对照 Famicom World 的电路板照片确认的，而非取自该项目。两者功能相同，因为那是驱动器本身的功能；实现方式不同：GAL 是组合逻辑加一个通过导线回接获得时钟的寄存器，本项目则是 C 语言主循环加一段汇编中断处理程序，交换两个预先算好的端口值，并以开漏方式驱动引脚。没有任何连续 4 行以上的代码相同，固件中也不含第三方代码。
 
 ## 许可证
 

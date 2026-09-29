@@ -252,19 +252,22 @@ The ATtiny4313 has the same pinout. It takes its own image, because its larger R
 
 Famicom World's photos label pin 5 /WRITE PROTECT. The power board and the RAM adapter call the signal /writable media: low means the disk can be written, which is when the firmware may drive a head.
 
-Before installing, measure on the drive with a multimeter:
+Before installing, measure on the drive with a multimeter, with no disk inserted:
 
 1. Power on, chip not installed: pins 14 and 15 idle at 5.5 V or less. The FMD-POWER-05 schematic shows only 5 V rails reaching the drive board, so about 5 V is expected; more would exceed the ATtiny's pin rating.
-2. Power off: resistance from pin 14 and from pin 15 to +5 V is at least 250 Ohm, so a head pulled low stays within the ATtiny's 20 mA per pin. The FD3206P shares the load while it drives the same head.
-3. After installing, during a write: the pin pulled low reads 0.8 V or less, the ATtiny's rated low level at 20 mA.
+2. Power on, chip not installed: clip a 1 kOhm resistor from pin 14 to GND with hook probes and read the voltage V on pin 14; repeat on pin 15. With V0 the idle voltage from step 1, the pin's source resistance is 1000 x (V0 - V) / V ohms. It must be at least 250 Ohm, so a head the ATtiny pulls low carries at most 20 mA, whether a resistor on the drive board or the FD3206P itself holds the line high. Below 250 Ohm, do not install. Leave the resistor on for a few seconds only: it may switch the head on, which is why no disk may be inserted.
+3. After installing, during a write on a disk you can lose: the pin pulled low reads 0.8 V or less, the ATtiny's rated low level at 20 mA.
 
 1. Bend or clip the pins marked "clip" so they cannot touch the FD3206P. Their counterparts are signals nobody has documented, and the firmware never needs them.
 2. Lift out the drive mechanism and remove its bottom plate to reach the controller board.
 3. Place the ATtiny on the FD3206P with pin 1 over pin 1. Both notches face the same way.
 4. Solder the eight pins marked "solder" to the FD3206P pins underneath.
-5. Refit the bottom plate with tape over the area above the chips.
+5. With the power off, check with the meter that no two neighbouring pins are joined and that pin 20 is not shorted to pin 10. A solder bridge on the FD3206P, which cannot be replaced, is the most likely way to damage the drive.
+6. Refit the bottom plate with tape over the area above the chips.
 
 ### Step 5: test on the drive
+
+Use a disk you can lose, and back up any disk before writing to it.
 
 1. Save a game. This is the case the FD3206P also writes; see [One thing it does not handle](#one-thing-it-does-not-handle).
 2. Rewrite a whole disk with a disk-writing tool, then read it back several times.
@@ -296,7 +299,7 @@ Each requirement is verified by a simulation scenario that runs the release firm
 
 ## One thing it does not handle
 
-On single-file saves the FD3206P still writes, on the same two pins, driven from its own flip-flop. If the two flip-flops disagree, both heads are pulled low at once. The GAL modchips that sit on this chip have the same property and drive their pins high as well; this firmware at least cannot short against the controller. Whether saves suffer is settled only on a drive. The fix that removes it for certain is the two trace cuts of the classic wired mod, which this project deliberately does not require.
+On single-file saves the FD3206P still writes, on the same two pins, from its own flip-flop, while the ATtiny drives them from its own. If the two disagree, both heads are pulled low at once and that save is written wrong. No-wire modchips that leave the FD3206P connected are sold for this drive, and one vendor states its chip works like an unrestricted FD7201; that is evidence the two flip-flops stay in step in practice. This firmware keeps the GAL modchip's phase exactly: it starts at 0, drives head 1 first and toggles on every falling edge. One difference remains. A GAL also drives its pins high and could overpower the controller when they disagree, while the ATtiny only pulls low and cannot. The classic two-chip mod is no evidence either way, because it cuts the traces between the FD3206P and the heads. A save on a real drive, on a disk you can lose, settles it; the fix that removes the question for certain is those two trace cuts, which this project deliberately does not require.
 
 ## Figures
 

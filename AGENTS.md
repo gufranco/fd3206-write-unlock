@@ -190,7 +190,7 @@ Nothing in this repository can drive a drive or a programmer, so a hardware resu
 | Question | Why simulation cannot |
 |---|---|
 | Does a single-file save still work with both chips writing the same heads | the FD3206P's own write stage is not modelled |
-| Are the FD3206P head outputs open collector | the piggyback design assumes it and no document states it |
+| Is the high on pins 14 and 15 weak enough, a source resistance of 250 Ohm or more | no document says whether the FD3206P drives the head lines high or only releases them; the powered 1 kOhm test in the README's pre-install measurements settles it |
 | Does a whole-disk write read back | the 2C33's decoding margin is not modelled |
 | What the edge-to-head delay really is | simavr enters the interrupt without the input synchroniser delay |
 | Do pins 14 and 15 idle at 5.5 V or less, and does a pulled head read 0.8 V or less | the head load and pull-ups sit on the drive board, which has no published schematic |
@@ -203,4 +203,4 @@ simavr runs headless and opens nothing. Any other emulator used for a check runs
 ## What is not done
 
 - Nothing has run on a drive.
-- Whether single-file saves suffer from the FD3206P and the ATtiny writing the same heads out of phase is unknown. The classic GAL modchip has the same exposure.
+- Whether single-file saves suffer from the FD3206P and the ATtiny writing the same heads out of phase is unproven. For: no-wire modchips that leave the FD3206P connected are sold, one vendor states its chip works like an unrestricted FD7201, and this firmware keeps the GAL's phase exactly. Against: a GAL also drives high and could overpower the controller, which a pull-low-only ATtiny cannot. The classic two-chip mod is no evidence, because it cuts the FD3206P off the heads.

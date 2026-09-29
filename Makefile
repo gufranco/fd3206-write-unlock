@@ -5,6 +5,8 @@ MCU := attiny2313a
 AVRDUDE_PART := t2313a
 F_CPU := 8000000UL
 FLASH_BYTES := 2048
+EDGE_HANDLER_BUDGET_CYCLES := 33
+INTERRUPTS_OFF_BUDGET_CYCLES := 12
 SIM_CLOCKS_HZ := 7200000 8000000 8800000
 LFUSE := 0xE4
 HFUSE := 0xD9
@@ -146,6 +148,7 @@ analyse: $(RELEASE_HEX) $(DEBUG_ELF)
 	$(foreach config,$(CPPCHECK_CONFIGS),cppcheck $(CPPCHECK_FLAGS) $(config) --addon=misra $(FIRMWARE_C) &&) true
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELF)
 	$(PYTHON) -m tools.check_hex $(RELEASE_HEX) --max-bytes $(FLASH_BYTES)
+	$(PYTHON) -m tools.isr_check $(AVR_OBJDUMP) $(RELEASE_ELF) $(EDGE_HANDLER_BUDGET_CYCLES) $(INTERRUPTS_OFF_BUDGET_CYCLES)
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage run -m unittest discover -s tests/tools -t .
 	COVERAGE_FILE=$(BUILD)/.coverage $(PYTHON) -m coverage report
 

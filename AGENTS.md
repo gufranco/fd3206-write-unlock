@@ -132,6 +132,7 @@ make test       host tests at 100 percent line and branch, then the simavr suite
                 on each chip at three clocks, failing past 32 bytes of stack
 make misra      the MISRA C:2012 gate alone, also part of analyse
 make mutation   break the firmware in 11 known ways; each break must fail the build or the tests
+make reproducible  build twice at different paths; both images must match byte for byte
 make figures    rewrite the README figures block
 make hooks      run analyse and test before every commit and check each commit message
 make fuses      write lfuse 0xE4 and hfuse 0xD9 on the host, PROGRAMMER, PORT and MCU as needed

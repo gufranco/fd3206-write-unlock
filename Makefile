@@ -28,7 +28,7 @@ RELEASE_ELF := $(call image_path,$(MCU)).elf
 RELEASE_HEX := $(call image_path,$(MCU)).hex
 DEBUG_ELF := $(DEBUG)/$(NAME)-$(MCU).elf
 
-CONTAINER_TARGETS := all size analyse hosttest simtest test mutation misra figures
+CONTAINER_TARGETS := all size analyse hosttest simtest test mutation reproducible misra figures
 
 .PHONY: $(CONTAINER_TARGETS) images image fuses flash hooks clean
 
@@ -179,5 +179,8 @@ test: hosttest simtest
 
 mutation:
 	$(PYTHON) -m tools.mutation .
+
+reproducible:
+	$(PYTHON) -m tools.reproducible .
 
 endif

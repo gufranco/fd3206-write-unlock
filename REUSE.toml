@@ -13,6 +13,7 @@ path = [
     "pnpm-lock.yaml",
     ".releaserc.json",
     ".tool-versions",
+    "CHANGELOG.md",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Gustavo Franco <gufranco@users.noreply.github.com>"

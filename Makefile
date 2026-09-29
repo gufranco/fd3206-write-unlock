@@ -24,7 +24,7 @@ RELEASE_ELF := $(RELEASE)/$(NAME).elf
 RELEASE_HEX := $(RELEASE)/$(NAME).hex
 DEBUG_ELF := $(DEBUG)/$(NAME).elf
 
-CONTAINER_TARGETS := all size analyse hosttest simtest test misra figures
+CONTAINER_TARGETS := all size analyse hosttest simtest test mutation misra figures
 
 .PHONY: $(CONTAINER_TARGETS) fuses flash hooks clean
 
@@ -165,5 +165,8 @@ simtest: $(SIM_TEST) $(RELEASE_ELF) $(INSTRUCTIONS)
 	$(foreach clock,$(SIM_CLOCKS_HZ),$(SIM_TEST) $(MCU) $(RELEASE_ELF) $(INSTRUCTIONS) $(clock) &&) true
 
 test: hosttest simtest
+
+mutation:
+	$(PYTHON) -m tools.mutation .
 
 endif

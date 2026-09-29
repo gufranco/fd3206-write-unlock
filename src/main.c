@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "fdswu/assert.h"
 #include "fdswu/conditions.h"
 #include "fdswu/heads.h"
 #include "fdswu/pins.h"
@@ -15,15 +14,11 @@ static void apply_heads(bool allowed) {
     const fdswu_heads_plan_t if_set = fdswu_heads_plan(true, allowed);
     fdswu_port_commit_heads(if_clear.now, if_clear.next_edge, if_clear.later_edge, if_set.now, if_set.next_edge,
                             if_set.later_edge);
-    FDSWU_ASSERT((fdswu_port_head_direction() & FDSWU_NOT_HEADS_MASK) == 0U);
-    FDSWU_ASSERT(allowed || (fdswu_port_head_direction() == 0U));
 }
 
 static void start(void) {
     fdswu_port_start(FDSWU_PULLUPS_A, FDSWU_PULLUPS_B, FDSWU_PULLUPS_D);
     apply_heads(false);
-    FDSWU_ASSERT(fdswu_port_head_direction() == 0U);
-    FDSWU_ASSERT(fdswu_port_pending_heads() == 0U);
 }
 
 int main(void) {

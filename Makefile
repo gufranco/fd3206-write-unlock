@@ -23,10 +23,8 @@ BUILD := build
 NAME := fd3206-write-unlock
 image_path = $(BUILD)/$(1)/release/$(NAME)-$(1)
 RELEASE := $(BUILD)/$(MCU)/release
-DEBUG := $(BUILD)/$(MCU)/debug
 RELEASE_ELF := $(call image_path,$(MCU)).elf
 RELEASE_HEX := $(call image_path,$(MCU)).hex
-DEBUG_ELF := $(DEBUG)/$(NAME)-$(MCU).elf
 
 CONTAINER_TARGETS := all size analyse hosttest simtest test mutation reproducible misra figures
 
@@ -81,7 +79,6 @@ SIM_CFLAGS := $(C_STD) -O2 $(WARNINGS) $(patsubst -I%,-isystem %,$(shell pkg-con
 SIM_LIBS := $(shell pkg-config --libs simavr libelf)
 
 RELEASE_OBJECTS := $(patsubst src/%,$(RELEASE)/%.o,$(FIRMWARE_C) $(FIRMWARE_S))
-DEBUG_OBJECTS := $(patsubst src/%,$(DEBUG)/%.o,$(FIRMWARE_C) $(FIRMWARE_S))
 INSTRUCTIONS := $(call image_path,$(MCU)).insn
 HOST_TEST := $(BUILD)/host/host_test
 SIM_TEST := $(BUILD)/sim/sim_test
@@ -92,7 +89,7 @@ CPPCHECK_FLAGS := --std=c17 --platform=avr8 --enable=all --check-level=exhaustiv
 	-D__AVR_ATtiny2313A__ -DF_CPU=$(F_CPU)
 CPPCHECK_CONFIGS := -DFDSWU_DEBUG -UFDSWU_DEBUG
 
-all: images $(DEBUG_ELF)
+all: images
 
 images:
 	$(foreach mcu,$(MCUS),$(MAKE) --no-print-directory MCU=$(mcu) image &&) true
@@ -103,22 +100,11 @@ $(RELEASE)/%.c.o: src/%.c $(FIRMWARE_H)
 	@mkdir -p $(@D)
 	$(AVR_CC) $(AVR_CFLAGS) -c -o $@ $<
 
-$(DEBUG)/%.c.o: src/%.c $(FIRMWARE_H)
-	@mkdir -p $(@D)
-	$(AVR_CC) $(AVR_CFLAGS) -DFDSWU_DEBUG -c -o $@ $<
-
 $(RELEASE)/%.S.o: src/%.S include/port/registers.h
 	@mkdir -p $(@D)
 	$(AVR_CC) $(AVR_ASFLAGS) -c -o $@ $<
 
-$(DEBUG)/%.S.o: src/%.S include/port/registers.h
-	@mkdir -p $(@D)
-	$(AVR_CC) $(AVR_ASFLAGS) -c -o $@ $<
-
 $(RELEASE_ELF): $(RELEASE_OBJECTS)
-	$(AVR_CC) $(AVR_LDFLAGS) -o $@ $^
-
-$(DEBUG_ELF): $(DEBUG_OBJECTS)
 	$(AVR_CC) $(AVR_LDFLAGS) -o $@ $^
 
 $(RELEASE_HEX): $(RELEASE_ELF)
@@ -141,7 +127,7 @@ size: $(RELEASE_ELF)
 figures: $(RELEASE_ELF)
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $< --update
 
-analyse: images $(DEBUG_ELF)
+analyse: images
 	clang-format --dry-run --Werror $(C_FILES)
 	ruff check
 	ruff format --check

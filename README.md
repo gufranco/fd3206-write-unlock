@@ -28,7 +28,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
 </p>
 
 <p align="center">
-<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>238</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>16</b> simulation scenarios
+<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>230</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>16</b> simulation scenarios
 </p>
 
 ---
@@ -67,7 +67,7 @@ A 15-instruction assembly interrupt moves the head 10 cycles after each WRITE DA
 <td width="50%" valign="top">
 
 **Zero MISRA findings**<br>
-C17 checked against MISRA C:2012 in debug and release builds, with every register access isolated in one assembly module.
+C17 checked against MISRA C:2012 with assertions on and off, with every register access isolated in one assembly module.
 
 </td>
 </tr>
@@ -299,9 +299,9 @@ On single-file saves the FD3206P still writes, on the same two pins, driven from
 <!-- figures:begin -->
 | Figure | Value |
 |---|---|
-| Flash used | 238 bytes |
+| Flash used | 230 bytes |
 | Edge handler | 15 instructions |
-| Firmware source | 227 non-blank lines |
+| Firmware source | 189 non-blank lines |
 <!-- figures:end -->
 
 Measured from the release build.

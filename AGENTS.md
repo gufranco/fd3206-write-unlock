@@ -11,7 +11,7 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 1. **Piggyback only.** The ATtiny sits on the FD3206P pin 1 over pin 1. Nothing on the drive board is cut and no other part is added: no resistor, diode, transistor, wire or capacitor. A change that needs any of them is out of scope, however much it would improve something. The rule covers the drive mechanism board. The power board's own write lockout, on FMD-POWER-04, -05, some -02 boards and the Twin Famicom AN-500, is a separate prerequisite that the docs describe and the firmware cannot remove.
 2. **ATtiny2313A or ATtiny4313 only.** The FD3206P pin map fixes which ATtiny pin meets which signal, and only the x313 puts GND, VCC, INT0 and a port pin on every signal pin at once. The 8-pin parts have five usable I/O and the design needs six; the sixth would be RESET, which would end in-system programming. Do not propose them again without a new pin argument.
 3. **The logic is the classic write stage, nothing more.** One flip-flop state changed by each falling edge of WRITE DATA, one head driven per state, both heads released unless /READY, /WRITABLE MEDIA and /WRITE GATE are all low. No detection, no heuristics, no state machine layered on top. An earlier revision watched the FD3206P and stepped aside when it wrote; it was removed because every guess is a new way to fail.
-4. **Protection is allowed only when it is nearly free.** The watchdog, the brown-out fuse, pull-low outputs and debug-only assertions stay because each costs a few lines or nothing in the release image. Anything else needs a measured reason recorded here first.
+4. **Protection is allowed only when it is nearly free.** The watchdog, the brown-out fuse and pull-low outputs stay because each costs a few lines. Anything else needs a measured reason recorded here first. On-chip assertions were removed on 2026-09-29: mutation testing showed each one read a register right after the commit that had just written it, so none could ever fail, and link-time optimisation already proved the rest away, leaving the debug image byte for byte the size of the release. Assertions live in the logic layer, where the host tests run them.
 5. **A head pin pulls low or floats.** It is an output at 0 or an input, never an output at 1. The FD3206P shares pins 14 and 15, and a pin that never drives high cannot short against it.
 6. **Never drive a pin whose FD3206P function is unknown.** Only pins 4, 5, 6, 10, 13, 14, 15 and 20 are soldered. Every other pin is clipped, kept an input, and given its internal pull-up so it cannot float. The four soldered inputs keep their internal pull-ups too: the ATtiny guarantees a high only from 3.0 V where the TTL parts it replaces accept 2.0 V, and the power board already pulls /WRITE GATE up with 10 kOhm. A head pin's port latch stays 0, which `pins.h` asserts at compile time, so enabling a head can only pull it low.
 7. **C17 and MISRA C:2012 with zero deviations, built only in the pinned Docker toolchain.** C17 is the newest standard MISRA C:2012 and its amendments cover; C23 features, and the C11 features rule 1.4 calls emergent such as `_Noreturn`, are out. `make analyse` runs the cppcheck MISRA addon over the debug and the release configuration and fails on any finding; there is no deviation list. Every compile, check and test runs in the image described by [`Dockerfile`](Dockerfile). The host needs Docker and Python 3; `make` delegates to the container. Programming with `avrdude` is the one step that runs on the host. Released firmware is built by the release pipeline, never by an IDE.
@@ -27,10 +27,10 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 | Rule | How it holds here | Exception |
 |---|---|---|
 | 1. Simple control flow, no goto, setjmp or recursion | `tools/style_gate.py` rejects them | none |
-| 2. Every loop has a fixed bound | loops in firmware: two | `main` runs until power-off; `fdswu_assert_fail` halts forever with heads released and the watchdog off |
+| 2. Every loop has a fixed bound | loops in firmware: two | `main` runs until power-off |
 | 3. No dynamic memory after start-up | no heap at all; the style gate rejects `malloc`, `calloc`, `realloc`, `free`, `alloca` | none |
 | 4. Functions fit on a page | the style gate fails any function over 60 lines | none |
-| 5. Two assertions per function | every C function with logic carries two `FDSWU_ASSERT`; compiled in with `FDSWU_DEBUG` for the debug ELF and the host tests, out of the release image | `fdswu_conditions_allow` is a single expression, `main` is the loop itself, and the assembly port functions are single register moves |
+| 5. Two assertions per function | every logic-layer function with a computed result carries two `FDSWU_ASSERT`, compiled in with `FDSWU_DEBUG` for the host tests only; no AVR image is built with them | `fdswu_conditions_allow` is a single expression; `main.c` only sequences port calls, whose on-chip checks could never fail, per hard rule 4; the assembly port functions are single register moves |
 | 6. Smallest scope for data | file-scope state is limited to the three GPIOR registers the edge handler shares | none |
 | 7. Check every return value and parameter | MISRA rule 17.7, enforced by the MISRA gate, requires every returned value to be used | none |
 | 8. Limited preprocessor | `#define` only for include guards, the assertion macro, typed object-like constants such as `((uint8_t)0x08U)` checked by `_Static_assert`, and names the assembly shares | none |
@@ -124,7 +124,7 @@ build/               generated, never committed
 ## Build commands
 
 ```
-make            release hex for each chip and debug ELF, in Docker
+make            release hex for each chip, in Docker
 make size       firmware size
 make analyse    clang-format, ruff, style gate, layer check, REUSE, type widths, cppcheck with MISRA, README figures,
                 hex size and edge-handler cycle budget per chip, tool tests at 100 percent

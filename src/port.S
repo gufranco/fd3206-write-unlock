@@ -17,7 +17,6 @@
     .section .text.fdswu_port_start,"ax",@progbits
     .global fdswu_port_start
 fdswu_port_start:
-    out _SFR_IO_ADDR(MCUSR), r1
     wdr
     ldi rWork, WATCHDOG_CHANGE
     out _SFR_IO_ADDR(FDSWU_WATCHDOG_CONTROL), rWork
@@ -29,11 +28,8 @@ fdswu_port_start:
     out _SFR_IO_ADDR(PORTA), rFirst
     out _SFR_IO_ADDR(PORTB), rSecond
     out _SFR_IO_ADDR(PORTD), rThird
-    out _SFR_IO_ADDR(FDSWU_HEAD_DIRECTION), r1
     ldi rWork, _BV(ISC01)
     out _SFR_IO_ADDR(MCUCR), rWork
-    ldi rWork, _BV(INTF0)
-    out _SFR_IO_ADDR(EIFR), rWork
     ldi rWork, _BV(INT0)
     out _SFR_IO_ADDR(GIMSK), rWork
     ret
@@ -63,31 +59,3 @@ fdswu_port_commit_heads:
     out _SFR_IO_ADDR(FDSWU_LATER_EDGE_HEADS), rSixth
     sei
     ret
-
-    .section .text.fdswu_port_head_direction,"ax",@progbits
-    .global fdswu_port_head_direction
-fdswu_port_head_direction:
-    in rFirst, _SFR_IO_ADDR(FDSWU_HEAD_DIRECTION)
-    ret
-
-    .section .text.fdswu_port_pending_heads,"ax",@progbits
-    .global fdswu_port_pending_heads
-fdswu_port_pending_heads:
-    in rFirst, _SFR_IO_ADDR(FDSWU_NEXT_EDGE_HEADS)
-    in rWork, _SFR_IO_ADDR(FDSWU_LATER_EDGE_HEADS)
-    or rFirst, rWork
-    ret
-
-    .section .text.fdswu_assert_fail,"ax",@progbits
-    .global fdswu_assert_fail
-fdswu_assert_fail:
-    cli
-    clr rWork
-    out _SFR_IO_ADDR(FDSWU_HEAD_DIRECTION), rWork
-    out _SFR_IO_ADDR(MCUSR), rWork
-    wdr
-    ldi rFirst, WATCHDOG_CHANGE
-    out _SFR_IO_ADDR(FDSWU_WATCHDOG_CONTROL), rFirst
-    out _SFR_IO_ADDR(FDSWU_WATCHDOG_CONTROL), rWork
-.Lhalt:
-    rjmp .Lhalt

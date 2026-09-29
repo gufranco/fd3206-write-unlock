@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
 # SPDX-License-Identifier: MIT
 
+import re
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,30 @@ SURVIVED = "survived"
 IGNORED = shutil.ignore_patterns(
     "build", ".git", "node_modules", "docs", "specs", "__pycache__", "dist"
 )
+ASSEMBLY_SOURCES = ("src/port.S", "src/write_data_edge.S")
+INSTRUCTION = re.compile(r"^    ([a-z]+)\b(.*)$")
+LOAD_IMMEDIATE = re.compile(r"^(    ldi \w+, )(.+)$")
+FUNCTION_LABEL = re.compile(r"^([A-Za-z_]\w*):")
+SWAPPED_MNEMONICS = {
+    "sbis": "sbic",
+    "sbic": "sbis",
+    "sbi": "cbi",
+    "cbi": "sbi",
+    "cli": "sei",
+    "sei": "cli",
+    "breq": "brne",
+    "brne": "breq",
+}
+EQUIVALENT_MUTANTS = {
+    ("src/port.S", "fdswu_port_start", "deleted", "wdr"): (
+        "the datasheet's timed watchdog sequence starts with wdr, and the reset "
+        "that ran a few cycles earlier already restarted the counter"
+    ),
+    ("src/port.S", "fdswu_port_start", "deleted", "ret"): (
+        "the linker places fdswu_port_poll next on both chips, and its own ret "
+        "returns to the caller, which ignores the registers it loaded"
+    ),
+}
 USAGE_ERROR = 2
 ARGUMENT_COUNT = 2
 
@@ -33,6 +58,31 @@ class Mutant:
     path: str
     old: str
     new: str
+
+    def mutate(self, text: str) -> str:
+        count = text.count(self.old)
+        if count != 1:
+            raise MutationError(f"{self.name}: text found {count} times in {self.path}")
+        return text.replace(self.old, self.new)
+
+
+@dataclass(frozen=True, slots=True)
+class LineMutant:
+    name: str
+    path: str
+    function: str
+    index: int
+    old: str
+    new: str | None
+
+    def mutate(self, text: str) -> str:
+        lines = text.split("\n")
+        if self.index >= len(lines) or lines[self.index] != self.old:
+            raise MutationError(
+                f"{self.name}: line {self.index + 1} changed in {self.path}"
+            )
+        replacement = [] if self.new is None else [self.new]
+        return "\n".join([*lines[: self.index], *replacement, *lines[self.index + 1 :]])
 
 
 MUTANTS = (
@@ -97,6 +147,12 @@ MUTANTS = (
         "    ret\n.Lcommit_set:",
     ),
     Mutant(
+        "head plan assertion inverted",
+        "src/heads.c",
+        "FDSWU_ASSERT((plan.now & plan.next_edge) == 0U);",
+        "FDSWU_ASSERT((plan.now & plan.next_edge) != 0U);",
+    ),
+    Mutant(
         "edge handler stops advancing the plan",
         "src/write_data_edge.S",
         "    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_HEADS), rAfter\n",
@@ -105,13 +161,67 @@ MUTANTS = (
 )
 
 
-def apply(root: Path, mutant: Mutant) -> None:
+def line_variants(line: str) -> list[tuple[str, str | None]]:
+    instruction = INSTRUCTION.match(line)
+    if instruction is None:
+        return []
+    mnemonic = instruction.group(1)
+    variants: list[tuple[str, str | None]] = [("deleted", None)]
+    if mnemonic in SWAPPED_MNEMONICS:
+        swapped = f"    {SWAPPED_MNEMONICS[mnemonic]}{instruction.group(2)}"
+        variants = [
+            *variants,
+            (f"{mnemonic} became {SWAPPED_MNEMONICS[mnemonic]}", swapped),
+        ]
+    immediate = LOAD_IMMEDIATE.match(line)
+    if immediate and immediate.group(2) != "0":
+        variants = [*variants, ("immediate became 0", f"{immediate.group(1)}0")]
+    return variants
+
+
+def enclosing_functions(lines: list[str]) -> list[str]:
+    labels = [FUNCTION_LABEL.match(line) for line in lines]
+    return [
+        next((m.group(1) for m in reversed(labels[: index + 1]) if m), "")
+        for index in range(len(lines))
+    ]
+
+
+def candidate_mutants(root: Path) -> tuple[LineMutant, ...]:
+    return tuple(
+        LineMutant(
+            f"{path}:{index + 1} {change}: {line.strip()}",
+            path,
+            function,
+            index,
+            line,
+            new,
+        )
+        for path in ASSEMBLY_SOURCES
+        for lines in [(root / path).read_text().split("\n")]
+        for index, (line, function) in enumerate(
+            zip(lines, enclosing_functions(lines), strict=True)
+        )
+        for change, new in line_variants(line)
+    )
+
+
+def equivalence_key(mutant: LineMutant) -> tuple[str, str, str, str]:
+    change = mutant.name.split(" ", 1)[1].split(":", 1)[0]
+    return (mutant.path, mutant.function, change, mutant.old.strip())
+
+
+def assembly_mutants(root: Path) -> tuple[LineMutant, ...]:
+    return tuple(
+        mutant
+        for mutant in candidate_mutants(root)
+        if equivalence_key(mutant) not in EQUIVALENT_MUTANTS
+    )
+
+
+def apply(root: Path, mutant: Mutant | LineMutant) -> None:
     path = root / mutant.path
-    text = path.read_text()
-    count = text.count(mutant.old)
-    if count != 1:
-        raise MutationError(f"{mutant.name}: text found {count} times in {mutant.path}")
-    path.write_text(text.replace(mutant.old, mutant.new))
+    path.write_text(mutant.mutate(path.read_text()))
 
 
 def copy_repository(root: Path, destination: Path) -> None:
@@ -130,7 +240,7 @@ def outcome(root: Path, runner: Runner) -> str:
     return SURVIVED
 
 
-def judge(root: Path, mutant: Mutant | None, runner: Runner) -> str:
+def judge(root: Path, mutant: Mutant | LineMutant | None, runner: Runner) -> str:
     with tempfile.TemporaryDirectory() as scratch:
         copy = Path(scratch) / "repository"
         copy_repository(root, copy)
@@ -152,7 +262,7 @@ def main(arguments: list[str], runner: Runner = run_command) -> int:
         )
         return 1
     failures = []
-    for mutant in MUTANTS:
+    for mutant in (*MUTANTS, *assembly_mutants(root)):
         try:
             result = judge(root, mutant, runner)
         except MutationError as error:

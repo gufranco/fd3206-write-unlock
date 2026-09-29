@@ -28,7 +28,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
 </p>
 
 <p align="center">
-<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>230</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>16</b> simulation scenarios
+<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>230</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>20</b> simulation scenarios
 </p>
 
 ---
@@ -75,7 +75,7 @@ C17 checked against MISRA C:2012 with assertions on and off, with every register
 <td width="50%" valign="top">
 
 **Every instruction exercised**<br>
-16 simavr scenarios run the release image of each chip and fail if any firmware instruction never executes; the logic is checked on all 65,536 port combinations.
+20 simavr scenarios run the release image of each chip and fail if any firmware instruction never executes; the logic is checked on all 65,536 port combinations.
 
 </td>
 <td width="50%" valign="top">
@@ -281,14 +281,18 @@ Each requirement is verified by a simulation scenario that runs the release firm
 | Both head pins MUST be inputs unless /READY, /WRITABLE MEDIA and /WRITE GATE are all low | one condition high, 100 falling edges: both heads released after every edge |
 | While writing, exactly one head pin MUST be low, and it MUST change on every falling edge of WRITE DATA | 1000 edges 4.7 us apart: one head low after every edge, the other one each time |
 | A rising edge of WRITE DATA MUST NOT change the heads | 1 us low pulse: the heads change once, at the fall |
+| The head a write starts on MUST follow the count of falling edges, as the classic flip-flop does, even while the heads are released | 100 or 101 edges with the gate closed, then the gate opens: head 1 after an even count, head 2 after an odd one |
+| Holding WRITE DATA low MUST NOT change the heads again | 20 us low: the heads change once, at the fall |
+| An edge arriving while the gate opens MUST NOT be lost | an edge at each of 96 cycle offsets after the gate opens: the head after it always matches the edge count |
 | The heads MUST be released within 10 us of any condition going high | each condition in turn, no further edges: both released within 10 us |
 | Exactly one head MUST be driven within 10 us of all conditions becoming low | /WRITE GATE falls with the others low: one head low within 10 us |
 | The heads MUST end released after a write gate glitch | 250 ns gate pulse: both released afterwards |
 | After start-up no pin SHALL be an output, every input SHALL have its pull-up and no head pin SHALL | all inputs high: every direction register zero, pull-ups on the four inputs, none on the heads |
 | The heads MUST be released within 100 us of /WRITE GATE going high while data edges arrive at the fastest rate | fastest data, gate closes: released within 100 us and for the next 100 edges |
 | Exactly one head MUST be driven within 100 us of /WRITE GATE going low while data edges arrive at the fastest rate | fastest data, gate opens: one head low within 100 us, alternating on every edge after |
-| The firmware MUST run undivided from its clock and keep the watchdog armed | after start-up: prescaler 1, watchdog enabled |
+| The firmware MUST run undivided from its clock and keep the watchdog armed | a chip that starts divided by 8, after start-up: prescaler 1, watchdog enabled with its 60 ms timeout |
 | The watchdog MUST NOT fire during normal operation | 600 ms of edges, ten times the timeout: no reset, one head low after every edge |
+| A hung main loop MUST be reset by the watchdog, and writing MUST resume | the loop stops for 100 ms: one watchdog reset, then one head low and alternating on the next 100 edges |
 
 ## One thing it does not handle
 

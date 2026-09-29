@@ -60,6 +60,75 @@ class ApplyTest(unittest.TestCase):
             mutation.apply(root, MUTANT)
 
 
+class LineMutantTest(unittest.TestCase):
+    def test_deletion_removes_only_that_line(self) -> None:
+        mutant = mutation.LineMutant("drop", "src/x.S", "a", 1, "    wdr", None)
+
+        text = mutant.mutate("a:\n    wdr\n    ret")
+
+        self.assertEqual(text, "a:\n    ret")
+
+    def test_replacement_rewrites_only_that_line(self) -> None:
+        mutant = mutation.LineMutant("swap", "src/x.S", "a", 0, "    sei", "    cli")
+
+        text = mutant.mutate("    sei\n    sei")
+
+        self.assertEqual(text, "    cli\n    sei")
+
+    def test_changed_line_raises(self) -> None:
+        mutant = mutation.LineMutant("stale", "src/x.S", "a", 0, "    sei", None)
+
+        with self.assertRaisesRegex(mutation.MutationError, "line 1 changed"):
+            mutant.mutate("    cli")
+
+
+class LineVariantsTest(unittest.TestCase):
+    def test_swappable_instruction_is_deleted_and_swapped(self) -> None:
+        variants = mutation.line_variants("    sbic 0x15, 0")
+
+        self.assertEqual(
+            variants, [("deleted", None), ("sbic became sbis", "    sbis 0x15, 0")]
+        )
+
+    def test_load_immediate_is_deleted_and_zeroed(self) -> None:
+        variants = mutation.line_variants("    ldi rWork, WATCHDOG_60MS")
+
+        self.assertEqual(
+            variants, [("deleted", None), ("immediate became 0", "    ldi rWork, 0")]
+        )
+
+    def test_zero_immediate_is_only_deleted(self) -> None:
+        variants = mutation.line_variants("    ldi rWork, 0")
+
+        self.assertEqual(variants, [("deleted", None)])
+
+    def test_labels_and_directives_are_skipped(self) -> None:
+        lines = ["fdswu_port_poll:", "    .global fdswu_port_poll", "#define rWork r25"]
+
+        variants = [mutation.line_variants(line) for line in lines]
+
+        self.assertEqual(variants, [[], [], []])
+
+
+class EnclosingFunctionsTest(unittest.TestCase):
+    def test_local_labels_stay_inside_their_function(self) -> None:
+        lines = [
+            "    .section x",
+            "first:",
+            "    wdr",
+            ".Lloop:",
+            "    ret",
+            "second:",
+            "    ret",
+        ]
+
+        functions = mutation.enclosing_functions(lines)
+
+        self.assertEqual(
+            functions, ["", "first", "first", "first", "first", "second", "second"]
+        )
+
+
 class CopyTest(unittest.TestCase):
     def test_copy_leaves_build_output_behind(self) -> None:
         root = make_repository()
@@ -102,6 +171,7 @@ class MainTest(unittest.TestCase):
         root = make_repository()
         with (
             unittest.mock.patch.object(mutation, "MUTANTS", mutants),
+            unittest.mock.patch.object(mutation, "assembly_mutants", return_value=()),
             unittest.mock.patch("sys.stdout", new_callable=io.StringIO) as out,
             unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as err,
         ):
@@ -150,6 +220,35 @@ class CatalogueTest(unittest.TestCase):
         counts = [(root / m.path).read_text().count(m.old) for m in mutation.MUTANTS]
 
         self.assertEqual(counts, [1] * len(mutation.MUTANTS))
+
+    def test_every_equivalent_mutant_names_exactly_one_candidate(self) -> None:
+        root = Path(__file__).resolve().parent.parent.parent
+
+        keys = [mutation.equivalence_key(m) for m in mutation.candidate_mutants(root)]
+
+        counts = [keys.count(key) for key in mutation.EQUIVALENT_MUTANTS]
+        self.assertEqual(counts, [1] * len(mutation.EQUIVALENT_MUTANTS))
+
+    def test_equivalent_mutants_are_not_run(self) -> None:
+        root = Path(__file__).resolve().parent.parent.parent
+
+        keys = {mutation.equivalence_key(m) for m in mutation.assembly_mutants(root)}
+
+        self.assertEqual(keys & set(mutation.EQUIVALENT_MUTANTS), set())
+
+    def test_every_assembly_instruction_has_a_mutant(self) -> None:
+        root = Path(__file__).resolve().parent.parent.parent
+
+        mutants = mutation.candidate_mutants(root)
+
+        deleted = {(m.path, m.index) for m in mutants if m.new is None}
+        instructions = {
+            (path, index)
+            for path in mutation.ASSEMBLY_SOURCES
+            for index, line in enumerate((root / path).read_text().split("\n"))
+            if mutation.INSTRUCTION.match(line)
+        }
+        self.assertEqual(deleted, instructions)
 
 
 if __name__ == "__main__":

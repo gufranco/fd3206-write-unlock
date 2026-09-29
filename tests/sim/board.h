@@ -43,7 +43,10 @@ uint8_t board_port_levels(const board_t *board, char port);
 uint8_t board_clock_prescaler(const board_t *board);
 uint8_t board_watchdog_control(const board_t *board);
 uint32_t board_reset_count(const board_t *board);
+uint8_t board_reset_flags(const board_t *board);
+void board_inject_hang(board_t *board);
 void board_reset(board_t *board);
+void board_wait_startup(board_t *board);
 uint16_t board_deepest_stack(void);
 uint16_t board_ram_bytes(const board_t *board);
 

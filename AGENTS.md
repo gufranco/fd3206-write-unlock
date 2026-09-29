@@ -110,7 +110,7 @@ include/fdswu/       logic-layer headers: pins, heads plan, conditions, assertio
 include/port/        C prototypes of the port module, register names for the assembly
 src/                 firmware: logic modules, main loop, assembly port module, INT0 handler
 tests/host/          host unit tests of the logic layer
-tests/sim/           simavr harness and the 16 scenarios, run on each chip's image at 7.2, 8.0 and 8.8 MHz
+tests/sim/           simavr harness and the 20 scenarios, run on each chip's image at 7.2, 8.0 and 8.8 MHz
 tests/tools/         unit tests of the Python tools
 tests/type_widths.c  compile-time record of type widths per compiler
 tools/               Python gates and helpers called by the Makefile
@@ -131,7 +131,9 @@ make analyse    clang-format, ruff, style gate, layer check, REUSE, type widths,
 make test       host tests at 100 percent line and branch, then the simavr suite at 100 percent instructions
                 on each chip at three clocks, failing past 32 bytes of stack
 make misra      the MISRA C:2012 gate alone, also part of analyse
-make mutation   break the firmware in 11 known ways; each break must fail the build or the tests
+make mutation   delete every assembly instruction, swap every skip, bit set and interrupt flag, zero every
+                loaded constant, plus 12 hand-written breaks; each must fail the build or the tests,
+                except the equivalent mutants `tools/mutation.py` lists with their reasons
 make reproducible  build twice at different paths; both images must match byte for byte
 make figures    rewrite the README figures block
 make hooks      run analyse and test before every commit and check each commit message
@@ -169,6 +171,9 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | The GAL version soldered one of its outputs to FD3206P pin 12, whose function nobody knows | It came from a working install photo | hard rule 6 |
 | The global gitignore ignores `*.patch`, which hid a file from a commit | `git status` did not list it | `git check-ignore -v` on any generated file before committing |
 | avr-ld keeps `.L` labels for relaxation, so objdump shows them as function headers; the coverage list stopped each function at its first local label and held 47 of 76 instructions | The suite still reported 0 instructions never executed | `.L` headers continue the enclosing function in `tools/list_instructions.py`, with a test |
+| Hand-picked mutants all died while 26 generated ones survived: the prescaler and watchdog set-up, which simavr leaves unchecked, the head phase after the gate opens, and on-chip assertions that could never fail | Every hand-picked break was caught | `make mutation` generates a mutant for every assembly instruction; the harness models the divide-by-8 start and the `CLKPCE` timed write, checks the whole watchdog register, and a scenario pins the head phase |
+| The rising-edge scenario sampled the heads 7 cycles after the fall, while the edge handler writes them up to 13 cycles after it, so the release image passed by one cycle | It passed on every clock | the scenario checks that the last head change lands within 13 cycles of the fall |
+| The reset scenario allowed 20 us to start, which no requirement states; the release image needs about 21 us and passed only because the first edge's window absorbed the rest | It passed on every clock | the scenario waits the same start-up time as a power-on |
 | The simavr ioctl macros build their code from a `char`; on x86_64 `char` is signed, so CI failed `-Wsign-conversion` while the aarch64 build was clean | The same image passed every gate on the Mac | `make analyse` compiles the harness and host tests with both `-fsigned-char` and `-funsigned-char` |
 | Moving register access behind assembly calls pushed the gate response past 10 us: three calls per main-loop pass plus the update | Every other scenario passed | the gate-response scenarios; the loop now makes one `fdswu_port_poll` call that services the watchdog and samples both ports |
 | `_Noreturn`, valid C11, still broke MISRA: rule 1.4 lists it as an emergent feature | It compiled cleanly under `-pedantic-errors` | the MISRA gate in `make analyse`, calibrated against a planted `goto` |

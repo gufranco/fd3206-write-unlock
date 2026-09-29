@@ -7,119 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "board.h"
-
-enum {
-    HALF_BIT_CELL_NS = 5187,
-    FAST_HALF_BIT_CELL_NS = 4715,
-    WRITE_PULSE_LOW_NS = 1000,
-    SETTLE_NS = 20000,
-    GATE_RESPONSE_LIMIT_NS = 10000,
-    LOADED_GATE_RESPONSE_LIMIT_NS = 100000,
-    LOADED_EDGE_BUDGET = 64,
-    STACK_LIMIT_BYTES = 32,
-    LOOP_PHASE_SWEEP_CYCLES = 64,
-    IDLE_EDGE_COUNT = 100,
-    WRITE_EDGE_COUNT = 1000,
-    SOAK_NS = 600000000,
-    GLITCH_NS = 250,
-    WATCHDOG_ENABLE_BIT = 0x08,
-    HEAD_PIN_BITS_B = 0x0C,
-    READY_PIN_BIT_B = 0x02,
-    CONDITION_PIN_BITS_A = 0x03,
-    WRITE_DATA_PIN_BIT_D = 0x04
-};
-
-typedef struct {
-    board_level_t write_gate;
-    board_level_t writable_media;
-    board_level_t ready;
-} write_conditions_t;
-
-static const write_conditions_t WRITING = {LEVEL_LOW, LEVEL_LOW, LEVEL_LOW};
-static const write_conditions_t GATE_CLOSED = {LEVEL_HIGH, LEVEL_LOW, LEVEL_LOW};
-static const write_conditions_t NOT_WRITABLE = {LEVEL_LOW, LEVEL_HIGH, LEVEL_LOW};
-static const write_conditions_t NOT_READY = {LEVEL_LOW, LEVEL_LOW, LEVEL_HIGH};
-
-static const char *target_mcu;
-static const char *target_elf;
-static uint32_t target_frequency_hz;
-
-static const uint64_t NS_PER_S = 1000000000U;
-
-#define CHECK(condition)                                                                                               \
-    do {                                                                                                               \
-        if (!(condition)) {                                                                                            \
-            fprintf(stderr, "%s:%d: check failed: %s\n", __FILE__, __LINE__, #condition);                              \
-            return false;                                                                                              \
-        }                                                                                                              \
-    } while (0)
-
-static board_t *open_board(void) {
-    board_t *board = board_open(target_mcu, target_elf, target_frequency_hz);
-    if (board == NULL) {
-        exit(EXIT_FAILURE);
-    }
-    return board;
-}
-
-static void run_ns(board_t *board, uint64_t ns) {
-    board_run_cycles(board, ns * board_frequency_hz(board) / NS_PER_S);
-}
-
-static uint64_t cycles_to_ns(const board_t *board, uint64_t cycles) {
-    return cycles * NS_PER_S / board_frequency_hz(board);
-}
-
-static void apply_conditions(board_t *board, write_conditions_t conditions) {
-    board_set(board, SIGNAL_WRITE_GATE, conditions.write_gate);
-    board_set(board, SIGNAL_WRITABLE_MEDIA, conditions.writable_media);
-    board_set(board, SIGNAL_READY, conditions.ready);
-    run_ns(board, SETTLE_NS);
-}
-
-static void write_pulse(board_t *board, uint64_t period_ns) {
-    board_set(board, SIGNAL_WRITE_DATA, LEVEL_LOW);
-    run_ns(board, WRITE_PULSE_LOW_NS);
-    board_set(board, SIGNAL_WRITE_DATA, LEVEL_HIGH);
-    run_ns(board, period_ns - WRITE_PULSE_LOW_NS);
-}
-
-typedef struct {
-    uint32_t released;
-    uint32_t one_head_low;
-    uint32_t repeats;
-    uint32_t invalid;
-    uint32_t driven_high;
-} head_census_t;
-
-static bool one_head_low(board_heads_t heads) {
-    return heads == HEADS_HEAD1_LOW || heads == HEADS_HEAD2_LOW;
-}
-
-static head_census_t census_heads(board_t *board, uint32_t edges, uint64_t period_ns) {
-    head_census_t census = {0};
-    board_heads_t previous = board_heads(board);
-    for (uint32_t edge = 0; edge < edges; edge++) {
-        write_pulse(board, period_ns);
-        const board_heads_t heads = board_heads(board);
-        census.released += heads == HEADS_RELEASED;
-        census.one_head_low += one_head_low(heads);
-        census.repeats += one_head_low(heads) && heads == previous;
-        census.invalid += heads != HEADS_RELEASED && !one_head_low(heads);
-        census.driven_high +=
-            (board_port_directions(board, 'B') & board_port_levels(board, 'B') & HEAD_PIN_BITS_B) != 0;
-        previous = heads;
-    }
-    return census;
-}
-
-static uint64_t response_ns(board_t *board, board_signal_t signal, board_level_t level) {
-    const uint64_t start = board_cycle(board);
-    board_set(board, signal, level);
-    run_ns(board, SETTLE_NS);
-    return cycles_to_ns(board, board_last_head_change_cycle(board) - start);
-}
+#include "scenario.h"
 
 static bool heads_released_under(write_conditions_t conditions) {
     board_t *board = open_board();
@@ -163,17 +51,18 @@ static bool rising_edge_leaves_heads_unchanged(void) {
     board_t *board = open_board();
     apply_conditions(board, WRITING);
     write_pulse(board, HALF_BIT_CELL_NS);
-    board_set(board, SIGNAL_WRITE_DATA, LEVEL_LOW);
-    run_ns(board, WRITE_PULSE_LOW_NS);
-    const board_heads_t after_fall = board_heads(board);
+    const board_heads_t before_fall = board_heads(board);
+    const uint64_t fall_cycle = board_cycle(board);
 
-    board_set(board, SIGNAL_WRITE_DATA, LEVEL_HIGH);
-    run_ns(board, HALF_BIT_CELL_NS);
+    write_pulse(board, HALF_BIT_CELL_NS);
 
     const board_heads_t after_rise = board_heads(board);
+    const uint64_t last_change_after_fall = board_last_head_change_cycle(board) - fall_cycle;
     board_close(board);
-    CHECK(one_head_low(after_fall));
-    CHECK(after_rise == after_fall);
+    CHECK(one_head_low(before_fall));
+    CHECK(one_head_low(after_rise));
+    CHECK(after_rise != before_fall);
+    CHECK(last_change_after_fall <= EDGE_OUTPUT_LATENCY_CYCLES);
     return true;
 }
 
@@ -336,7 +225,7 @@ static bool heads_release_on_reset_mid_write_and_writing_resumes(void) {
     board_reset(board);
 
     const board_heads_t at_reset = board_heads(board);
-    run_ns(board, SETTLE_NS);
+    board_wait_startup(board);
     const head_census_t after = census_heads(board, IDLE_EDGE_COUNT, HALF_BIT_CELL_NS);
     board_close(board);
     CHECK(one_head_low(before));
@@ -355,7 +244,89 @@ static bool clock_is_undivided_and_watchdog_is_armed(void) {
     const uint8_t watchdog = board_watchdog_control(board);
     board_close(board);
     CHECK(prescaler == 0);
-    CHECK((watchdog & WATCHDOG_ENABLE_BIT) != 0);
+    CHECK(watchdog == WATCHDOG_ARMED_60MS);
+    return true;
+}
+
+static bool long_low_pulse_changes_the_heads_once(void) {
+    board_t *board = open_board();
+    apply_conditions(board, WRITING);
+    write_pulse(board, HALF_BIT_CELL_NS);
+    const board_heads_t before_fall = board_heads(board);
+    const uint64_t fall_cycle = board_cycle(board);
+
+    board_set(board, SIGNAL_WRITE_DATA, LEVEL_LOW);
+    run_ns(board, SETTLE_NS);
+
+    const board_heads_t while_low = board_heads(board);
+    const uint64_t last_change_after_fall = board_last_head_change_cycle(board) - fall_cycle;
+    board_close(board);
+    CHECK(one_head_low(while_low));
+    CHECK(while_low != before_fall);
+    CHECK(last_change_after_fall <= EDGE_OUTPUT_LATENCY_CYCLES);
+    return true;
+}
+
+static board_heads_t heads_after_edge_at_gate_open(uint64_t delay_cycles) {
+    board_t *board = open_board();
+    apply_conditions(board, GATE_CLOSED);
+    census_heads(board, IDLE_EDGE_COUNT, HALF_BIT_CELL_NS);
+    board_set(board, SIGNAL_WRITE_GATE, LEVEL_LOW);
+    board_run_cycles(board, delay_cycles);
+    write_pulse(board, HALF_BIT_CELL_NS);
+    run_ns(board, SETTLE_NS);
+    const board_heads_t heads = board_heads(board);
+    board_close(board);
+    return heads;
+}
+
+static bool edge_during_gate_opening_keeps_the_head_phase(void) {
+    uint32_t wrong_phase = 0;
+
+    for (uint64_t delay = 0; delay < GATE_EDGE_SWEEP_CYCLES; delay++) {
+        wrong_phase += heads_after_edge_at_gate_open(delay) != HEADS_HEAD2_LOW;
+    }
+
+    CHECK(wrong_phase == 0);
+    return true;
+}
+
+static board_heads_t heads_at_gate_open_after(uint32_t released_edges) {
+    board_t *board = open_board();
+    apply_conditions(board, GATE_CLOSED);
+    census_heads(board, released_edges, HALF_BIT_CELL_NS);
+    apply_conditions(board, WRITING);
+    const board_heads_t heads = board_heads(board);
+    board_close(board);
+    return heads;
+}
+
+static bool first_head_follows_the_edge_count_while_released(void) {
+    const board_heads_t after_even = heads_at_gate_open_after(IDLE_EDGE_COUNT);
+
+    const board_heads_t after_odd = heads_at_gate_open_after(IDLE_EDGE_COUNT + 1U);
+
+    CHECK(after_even == HEADS_HEAD1_LOW);
+    CHECK(after_odd == HEADS_HEAD2_LOW);
+    return true;
+}
+
+static bool hung_firmware_is_reset_by_the_watchdog_and_writing_resumes(void) {
+    board_t *board = open_board();
+    apply_conditions(board, WRITING);
+    census_heads(board, IDLE_EDGE_COUNT, HALF_BIT_CELL_NS);
+
+    board_inject_hang(board);
+    run_ns(board, WATCHDOG_STALL_NS);
+
+    const uint32_t resets = board_reset_count(board);
+    const uint8_t reset_flags = board_reset_flags(board);
+    const head_census_t after = census_heads(board, IDLE_EDGE_COUNT, HALF_BIT_CELL_NS);
+    board_close(board);
+    CHECK(resets == 1);
+    CHECK((reset_flags & WATCHDOG_RESET_FLAG) != 0);
+    CHECK(after.one_head_low == IDLE_EDGE_COUNT);
+    CHECK(after.repeats == 0);
     return true;
 }
 
@@ -385,6 +356,9 @@ static const test_case_t TESTS[] = {
     TEST_CASE(heads_released_while_drive_not_ready),
     TEST_CASE(one_head_low_and_alternating_at_fastest_data_rate),
     TEST_CASE(rising_edge_leaves_heads_unchanged),
+    TEST_CASE(first_head_follows_the_edge_count_while_released),
+    TEST_CASE(long_low_pulse_changes_the_heads_once),
+    TEST_CASE(edge_during_gate_opening_keeps_the_head_phase),
     TEST_CASE(heads_release_when_write_gate_closes),
     TEST_CASE(heads_release_when_disk_becomes_not_writable),
     TEST_CASE(heads_release_when_ready_drops),
@@ -395,6 +369,7 @@ static const test_case_t TESTS[] = {
     TEST_CASE(startup_drives_no_pin_and_pulls_up_every_input),
     TEST_CASE(clock_is_undivided_and_watchdog_is_armed),
     TEST_CASE(long_write_never_trips_the_watchdog),
+    TEST_CASE(hung_firmware_is_reset_by_the_watchdog_and_writing_resumes),
     TEST_CASE(heads_release_on_reset_mid_write_and_writing_resumes),
 };
 
@@ -403,9 +378,8 @@ int main(int argc, char **argv) {
         fprintf(stderr, "usage: %s <mcu> <firmware.elf> <instructions.insn> <clock-hz>\n", argv[0]);
         return EXIT_FAILURE;
     }
-    target_mcu = argv[1];
-    target_elf = argv[2];
-    target_frequency_hz = (uint32_t)strtoul(argv[4], NULL, 10);
+    const uint32_t frequency_hz = (uint32_t)strtoul(argv[4], NULL, 10);
+    scenario_configure(argv[1], argv[2], frequency_hz);
     if (!coverage_load(argv[3])) {
         return EXIT_FAILURE;
     }
@@ -421,8 +395,8 @@ int main(int argc, char **argv) {
            worst_gate_response_ns, GATE_RESPONSE_LIMIT_NS);
     printf("worst gate response under fastest data: %" PRIu64 " ns of %d ns allowed\n", worst_loaded_gate_response_ns,
            LOADED_GATE_RESPONSE_LIMIT_NS);
-    printf("%s at %" PRIu32 " Hz: %zu tests, %d failed, %u firmware instructions never executed\n", target_mcu,
-           target_frequency_hz, test_count, failures, missing);
+    printf("%s at %" PRIu32 " Hz: %zu tests, %d failed, %u firmware instructions never executed\n", argv[1],
+           frequency_hz, test_count, failures, missing);
     const uint16_t stack = board_deepest_stack();
     printf("deepest stack: %u bytes of %d allowed\n", (unsigned)stack, STACK_LIMIT_BYTES);
     const bool stack_fits = stack <= STACK_LIMIT_BYTES;

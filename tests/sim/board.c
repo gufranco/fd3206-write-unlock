@@ -20,6 +20,13 @@ enum {
     PORT_COUNT = 4,
     PORT_NAME_BITS = 0x7F,
     CLOCK_PRESCALER_ADDRESS = 0x46,
+    CLOCK_PRESCALER_CHANGE_ENABLE = 0x80,
+    CLOCK_PRESCALER_BITS = 0x0F,
+    CLOCK_PRESCALER_WINDOW_CYCLES = 4,
+    UNFUSED_CLOCK_DIVISION = 0x03,
+    RESET_FLAGS_ADDRESS = 0x54,
+    HANG_OPCODE_LOW = 0xFF,
+    HANG_OPCODE_HIGH = 0xCF,
     WATCHDOG_CONTROL_ADDRESS = 0x41,
     HEAD1_BIT = 3,
     HEAD2_BIT = 2
@@ -46,6 +53,8 @@ struct board {
     bool started;
     uint8_t driven_mask[PORT_COUNT];
     uint8_t driven_value[PORT_COUNT];
+    uint64_t prescaler_change_until;
+    bool prescaler_change_armed;
 };
 
 static uint16_t deepest_stack;
@@ -148,6 +157,25 @@ static void drive_pin(board_t *board, pin_t pin, board_level_t level) {
     avr_ioctl(board->avr, (uint32_t)AVR_IOCTL_IOPORT_SET_EXTERNAL(pin.port), &external);
 }
 
+static void clock_prescaler_write(avr_t *avr, avr_io_addr_t address, uint8_t value, void *param) {
+    board_t *board = param;
+    const bool change_enable = (value & CLOCK_PRESCALER_CHANGE_ENABLE) != 0U;
+    if (change_enable && (value & (uint8_t)~CLOCK_PRESCALER_CHANGE_ENABLE) == 0U) {
+        board->prescaler_change_until = avr->cycle + CLOCK_PRESCALER_WINDOW_CYCLES;
+        board->prescaler_change_armed = true;
+        return;
+    }
+    if (!change_enable && board->prescaler_change_armed && avr->cycle <= board->prescaler_change_until) {
+        avr->data[address] = (uint8_t)(value & CLOCK_PRESCALER_BITS);
+    }
+    board->prescaler_change_armed = false;
+}
+
+static void power_on_unfused(board_t *board) {
+    board->avr->data[CLOCK_PRESCALER_ADDRESS] = UNFUSED_CLOCK_DIVISION;
+    board->prescaler_change_armed = false;
+}
+
 static void wire_inputs(board_t *board) {
     for (int signal = 0; signal < SIGNAL_COUNT; signal++) {
         const pin_t pin = SIGNAL_PINS[signal];
@@ -171,9 +199,15 @@ board_t *board_open(const char *mcu, const char *elf_path, uint32_t frequency_hz
     board->avr = avr;
     board->last_heads = HEADS_RELEASED;
     wire_inputs(board);
-    board_run_cycles(board, (uint64_t)STARTUP_US * board_frequency_hz(board) / HZ_PER_MHZ);
+    avr_register_io_write(avr, CLOCK_PRESCALER_ADDRESS, clock_prescaler_write, board);
+    power_on_unfused(board);
+    board_wait_startup(board);
     board->started = true;
     return board;
+}
+
+void board_wait_startup(board_t *board) {
+    board_run_cycles(board, (uint64_t)STARTUP_US * board_frequency_hz(board) / HZ_PER_MHZ);
 }
 
 void board_close(board_t *board) {
@@ -226,8 +260,21 @@ uint32_t board_reset_count(const board_t *board) {
     return board->resets;
 }
 
+uint8_t board_reset_flags(const board_t *board) {
+    return board->avr->data[RESET_FLAGS_ADDRESS];
+}
+
+void board_inject_hang(board_t *board) {
+    avr_t *avr = board->avr;
+    const uint32_t address = avr->flashend - 1U;
+    avr->flash[address] = HANG_OPCODE_LOW;
+    avr->flash[address + 1U] = HANG_OPCODE_HIGH;
+    avr->pc = address;
+}
+
 void board_reset(board_t *board) {
     avr_reset(board->avr);
+    power_on_unfused(board);
     for (int signal = 0; signal < SIGNAL_COUNT; signal++) {
         const pin_t pin = SIGNAL_PINS[signal];
         const size_t index = port_index(pin.port);

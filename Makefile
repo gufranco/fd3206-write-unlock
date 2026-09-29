@@ -63,8 +63,8 @@ FIRMWARE_S := $(sort $(wildcard src/*.S))
 FIRMWARE_H := $(sort $(wildcard include/*/*.h))
 LOGIC_C := src/conditions.c src/heads.c
 HOST_TEST_C := tests/host/host_test.c tests/host/host_assert.c
-SIM_TEST_C := tests/sim/sim_test.c tests/sim/board.c
-C_FILES := $(FIRMWARE_C) $(FIRMWARE_H) $(HOST_TEST_C) $(SIM_TEST_C) tests/sim/board.h tests/type_widths.c
+SIM_TEST_C := tests/sim/sim_test.c tests/sim/scenario.c tests/sim/board.c
+C_FILES := $(FIRMWARE_C) $(FIRMWARE_H) $(HOST_TEST_C) $(SIM_TEST_C) tests/sim/board.h tests/sim/scenario.h tests/type_widths.c
 
 C_STD := -std=c17 -pedantic-errors
 WARNINGS := -Wall -Wextra -Wpedantic -Werror -Wconversion -Wsign-conversion -Wshadow -Wstrict-prototypes \
@@ -117,7 +117,7 @@ $(HOST_TEST): $(LOGIC_C) $(HOST_TEST_C) $(FIRMWARE_H)
 	@mkdir -p $(@D)
 	$(HOST_CC) $(HOST_CFLAGS) -O0 -DFDSWU_DEBUG --coverage -o $@ $(LOGIC_C) $(HOST_TEST_C)
 
-$(SIM_TEST): $(SIM_TEST_C) tests/sim/board.h
+$(SIM_TEST): $(SIM_TEST_C) tests/sim/board.h tests/sim/scenario.h
 	@mkdir -p $(@D)
 	$(HOST_CC) $(SIM_CFLAGS) -o $@ $(SIM_TEST_C) $(SIM_LIBS)
 

@@ -30,11 +30,11 @@ typedef enum {
 
 typedef struct board board_t;
 
-board_t *board_open(const char *mcu, const char *elf_path);
+board_t *board_open(const char *mcu, const char *elf_path, uint32_t frequency_hz);
 void board_close(board_t *board);
 void board_set(board_t *board, board_signal_t signal, board_level_t level);
 void board_run_cycles(board_t *board, uint64_t cycles);
-uint64_t board_cycles_per_us(const board_t *board);
+uint64_t board_frequency_hz(const board_t *board);
 uint64_t board_cycle(const board_t *board);
 board_heads_t board_heads(const board_t *board);
 uint64_t board_last_head_change_cycle(const board_t *board);

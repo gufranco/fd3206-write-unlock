@@ -14,8 +14,9 @@
 enum {
     MAX_FLASH_BYTES = 4096,
     STARTUP_US = 200,
-    CYCLES_PER_MHZ = 1000000,
-    CPU_FREQUENCY = 8000000,
+    HZ_PER_MHZ = 1000000,
+    PORT_COUNT = 4,
+    PORT_NAME_BITS = 0x7F,
     CLOCK_PRESCALER_ADDRESS = 0x46,
     WATCHDOG_CONTROL_ADDRESS = 0x41,
     HEAD1_BIT = 3,
@@ -41,6 +42,8 @@ struct board {
     uint64_t last_head_change_cycle;
     uint32_t resets;
     bool started;
+    uint8_t driven_mask[PORT_COUNT];
+    uint8_t driven_value[PORT_COUNT];
 };
 
 static bool covered[MAX_FLASH_BYTES];
@@ -101,7 +104,7 @@ static void step(board_t *board) {
     track_heads(board);
 }
 
-static avr_t *load_avr(const char *mcu, const char *elf_path) {
+static avr_t *load_avr(const char *mcu, const char *elf_path, uint32_t frequency_hz) {
     elf_firmware_t firmware;
     memset(&firmware, 0, sizeof firmware);
     if (elf_read_firmware(elf_path, &firmware) != 0) {
@@ -109,7 +112,7 @@ static avr_t *load_avr(const char *mcu, const char *elf_path) {
         return NULL;
     }
     snprintf(firmware.mmcu, sizeof firmware.mmcu, "%s", mcu);
-    firmware.frequency = CPU_FREQUENCY;
+    firmware.frequency = frequency_hz;
     avr_t *avr = avr_make_mcu_by_name(mcu);
     if (avr == NULL) {
         fprintf(stderr, "simavr has no core for %s\n", mcu);
@@ -121,16 +124,34 @@ static avr_t *load_avr(const char *mcu, const char *elf_path) {
     return avr;
 }
 
+static size_t port_index(char port) {
+    return (size_t)(port - 'A') % PORT_COUNT;
+}
+
+static void drive_pin(board_t *board, pin_t pin, board_level_t level) {
+    const size_t index = port_index(pin.port);
+    const uint8_t bit = (uint8_t)(1U << pin.bit);
+    board->driven_mask[index] = (uint8_t)(board->driven_mask[index] | bit);
+    board->driven_value[index] = level == LEVEL_HIGH ? (uint8_t)(board->driven_value[index] | bit)
+                                                     : (uint8_t)(board->driven_value[index] & ~bit);
+    avr_ioport_external_t external = {0};
+    external.name = (unsigned long)pin.port & PORT_NAME_BITS;
+    external.mask = board->driven_mask[index];
+    external.value = board->driven_value[index];
+    avr_ioctl(board->avr, (uint32_t)AVR_IOCTL_IOPORT_SET_EXTERNAL(pin.port), &external);
+}
+
 static void wire_inputs(board_t *board) {
     for (int signal = 0; signal < SIGNAL_COUNT; signal++) {
         const pin_t pin = SIGNAL_PINS[signal];
         board->inputs[signal] = avr_io_getirq(board->avr, (uint32_t)AVR_IOCTL_IOPORT_GETIRQ(pin.port), pin.bit);
+        drive_pin(board, pin, LEVEL_HIGH);
         avr_raise_irq(board->inputs[signal], LEVEL_HIGH);
     }
 }
 
-board_t *board_open(const char *mcu, const char *elf_path) {
-    avr_t *avr = load_avr(mcu, elf_path);
+board_t *board_open(const char *mcu, const char *elf_path, uint32_t frequency_hz) {
+    avr_t *avr = load_avr(mcu, elf_path, frequency_hz);
     if (avr == NULL) {
         return NULL;
     }
@@ -143,7 +164,7 @@ board_t *board_open(const char *mcu, const char *elf_path) {
     board->avr = avr;
     board->last_heads = HEADS_RELEASED;
     wire_inputs(board);
-    board_run_cycles(board, STARTUP_US * board_cycles_per_us(board));
+    board_run_cycles(board, (uint64_t)STARTUP_US * board_frequency_hz(board) / HZ_PER_MHZ);
     board->started = true;
     return board;
 }
@@ -154,6 +175,7 @@ void board_close(board_t *board) {
 }
 
 void board_set(board_t *board, board_signal_t signal, board_level_t level) {
+    drive_pin(board, SIGNAL_PINS[signal], level);
     avr_raise_irq(board->inputs[signal], level);
     track_heads(board);
 }
@@ -165,8 +187,8 @@ void board_run_cycles(board_t *board, uint64_t cycles) {
     }
 }
 
-uint64_t board_cycles_per_us(const board_t *board) {
-    return board->avr->frequency / CYCLES_PER_MHZ;
+uint64_t board_frequency_hz(const board_t *board) {
+    return board->avr->frequency;
 }
 
 uint64_t board_cycle(const board_t *board) {

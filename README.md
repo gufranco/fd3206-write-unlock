@@ -28,7 +28,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
 </p>
 
 <p align="center">
-<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>226</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>13</b> simulation scenarios
+<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>238</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>15</b> simulation scenarios
 </p>
 
 ---
@@ -75,7 +75,7 @@ C17 checked against MISRA C:2012 in debug and release builds, with every registe
 <td width="50%" valign="top">
 
 **Every instruction exercised**<br>
-13 simavr scenarios run the release image and fail if any firmware instruction never executes; the logic is checked on all 65,536 port combinations.
+15 simavr scenarios run the release image and fail if any firmware instruction never executes; the logic is checked on all 65,536 port combinations.
 
 </td>
 <td width="50%" valign="top">
@@ -93,7 +93,7 @@ Drives built from late 1988 use the Mitsumi FD3206P controller in place of the e
 
 ## The solution
 
-The classic fix rebuilds the drive's write stage outside the controller: a flip-flop that toggles on every falling edge of WRITE DATA, and a gate that drives one head only while /READY, /WRITE PROTECT and /WRITE GATE are all low. This firmware is that write stage, in a chip that sits on the controller itself.
+The classic fix rebuilds the drive's write stage outside the controller: a flip-flop that toggles on every falling edge of WRITE DATA, and a gate that drives one head only while /READY, /WRITABLE MEDIA and /WRITE GATE are all low. This firmware is that write stage, in a chip that sits on the controller itself.
 
 | | This firmware | GAL16V8 modchips | Classic wired mod |
 |:--|:--:|:--:|:--:|
@@ -109,7 +109,7 @@ The classic fix rebuilds the drive's write stage outside the controller: a flip-
 ```mermaid
 graph LR
     RAM[RAM adapter] --> PWR[Power board]
-    PWR -->|WRITE DATA, /WRITE GATE, /READY, /WRITE PROTECT| FD[FD3206P controller]
+    PWR -->|WRITE DATA, /WRITE GATE, /READY, /WRITABLE MEDIA| FD[FD3206P controller]
     PWR -->|same signals, same pins| AT[ATtiny2313A on top]
     FD -->|releases heads on a whole-disk write| HEADS[Write heads 1 and 2]
     AT -->|pulls one head low per flip-flop state| HEADS
@@ -118,6 +118,7 @@ graph LR
 - **Edge interrupt.** WRITE DATA lands on pin 6, which is the ATtiny's INT0. A 15-instruction assembly handler writes the next head state to the port first, then swaps two precomputed values ready for the edge after. It touches no flags and no C state.
 - **Gate.** The main loop samples the three conditions and services the watchdog in one call. When the conditions change it recomputes the two values the handler swaps, with interrupts off for the few instructions that takes.
 - **Pull low, never drive high.** A head pin is either an output at 0 or an input. The drive's own pull-up resistors hold a released head high, which is what the original circuit's open-collector decoder did. The FD3206P shares these two pins, and a pin that only ever pulls low cannot short against it.
+- **Pull-ups on every input.** WRITE DATA, /WRITE GATE, /WRITABLE MEDIA and /READY keep the chip's internal 20 to 50 kOhm pull-ups. The ATtiny needs 3.0 V to read a high where TTL chips need 2.0 V, and the pull-up lifts a weak TTL high toward 5 V. The power board already pulls /WRITE GATE up with 10 kOhm, so the lines are designed for it.
 - **Watchdog.** 60 ms. A reset leaves every pin an input, which releases both heads.
 
 Timing at 8 MHz:
@@ -126,10 +127,13 @@ Timing at 8 MHz:
 |:--|:--|:--|
 | Interrupt taken to head written | 10 cycles, 1.25 us | instruction count of the handler |
 | Whole handler | about 30 cycles, 3.75 us | instruction count, under the 4.7 us shortest edge spacing |
-| Variation between edges | up to 2 cycles, 250 ns, from the instruction in progress | AVR interrupt response |
-| Gate change to heads released or engaged | 8.1 us at worst, limit 10 us | simulation, change swept across 64 main-loop phases |
+| Variation between edges | up to 3 cycles, 375 ns, from the instruction in progress | AVR interrupt response, longest main-loop instruction `ret` |
+| Gate change to heads released or engaged | 7.4 us at worst, 8.2 us at 7.2 MHz; limit 10 us | simulation, change swept across 64 main-loop phases |
+| Same, while data edges arrive at the fastest rate | 19 us at worst, 23 us at 7.2 MHz; limit 100 us | simulation |
+| Interrupts held off when the conditions change | 12 cycles at most, 1.5 us | instruction count of the update routine |
+| Clock tolerance | every timing scenario passes at 7.2, 8.0 and 8.8 MHz | simulation at the internal oscillator's +/-10 percent |
 
-The drive records at 96.4 kHz, a bit cell of 10.4 us. 250 ns of variation is 2.4 percent of a cell. A gate change falls inside a gap between blocks of at least 480 bits, so microseconds of gate delay only trim or extend that gap.
+The drive records at 96.4 kHz, a bit cell of 10.4 us. 375 ns of variation is 3.6 percent of a cell. A gate change falls inside a gap between blocks of at least 480 bits, so microseconds of gate delay only trim or extend that gap.
 
 ## Power board
 
@@ -237,7 +241,7 @@ The ATtiny4313 has the same pinout and runs the same firmware.
 | ATtiny2313A pin | FD3206P signal | Action |
 |:--|:--|:--:|
 | 4, PA1 | /WRITE GATE | solder |
-| 5, PA0 | /WRITE PROTECT | solder |
+| 5, PA0 | /WRITABLE MEDIA | solder |
 | 6, PD2 INT0 | WRITE DATA | solder |
 | 10 | GND | solder |
 | 13, PB1 | /READY | solder |
@@ -246,13 +250,19 @@ The ATtiny4313 has the same pinout and runs the same firmware.
 | 20 | +5 V | solder |
 | 1, 2, 3, 7, 8, 9, 11, 12, 16, 17, 18, 19 | not documented | clip |
 
+Famicom World's photos label pin 5 /WRITE PROTECT. The power board and the RAM adapter call the signal /writable media: low means the disk can be written, which is when the firmware may drive a head.
+
+Before installing, measure on the drive with a multimeter:
+
+1. Power on, chip not installed: pins 14 and 15 idle at 5.5 V or less. The FMD-POWER-05 schematic shows only 5 V rails reaching the drive board, so about 5 V is expected; more would exceed the ATtiny's pin rating.
+2. Power off: resistance from pin 14 and from pin 15 to +5 V is at least 250 Ohm, so a head pulled low stays within the ATtiny's 20 mA per pin. The FD3206P shares the load while it drives the same head.
+3. After installing, during a write: the pin pulled low reads 0.8 V or less, the ATtiny's rated low level at 20 mA.
+
 1. Bend or clip the pins marked "clip" so they cannot touch the FD3206P. Their counterparts are signals nobody has documented, and the firmware never needs them.
 2. Lift out the drive mechanism and remove its bottom plate to reach the controller board.
 3. Place the ATtiny on the FD3206P with pin 1 over pin 1. Both notches face the same way.
 4. Solder the eight pins marked "solder" to the FD3206P pins underneath.
 5. Refit the bottom plate with tape over the area above the chips.
-
-Before the first write, measure the two head pull-up resistors. With a head pulled low the ATtiny sinks 5 V divided by that resistance, which must stay under its 20 mA per-pin rating, meaning a pull-up of 250 Ohm or more. The FD3206P shares the load while it drives the same head.
 
 ### Step 5: test on the drive
 
@@ -264,17 +274,19 @@ If whole-disk writes still fail, check that WRITE DATA and /WRITE GATE reach FD3
 
 ## Behaviour
 
-Each requirement is verified by a simulation scenario that runs the release firmware image. The gating and head selection are also checked for all 65,536 input port combinations.
+Each requirement is verified by a simulation scenario that runs the release firmware image at 7.2, 8.0 and 8.8 MHz. The gating and head selection are also checked for all 65,536 input port combinations.
 
 | Requirement | Scenario |
 |:--|:--|
-| Both head pins MUST be inputs unless /READY, /WRITE PROTECT and /WRITE GATE are all low | one condition high, 100 falling edges: both heads released after every edge |
+| Both head pins MUST be inputs unless /READY, /WRITABLE MEDIA and /WRITE GATE are all low | one condition high, 100 falling edges: both heads released after every edge |
 | While writing, exactly one head pin MUST be low, and it MUST change on every falling edge of WRITE DATA | 1000 edges 4.7 us apart: one head low after every edge, the other one each time |
 | A rising edge of WRITE DATA MUST NOT change the heads | 1 us low pulse: the heads change once, at the fall |
 | The heads MUST be released within 10 us of any condition going high | each condition in turn, no further edges: both released within 10 us |
 | Exactly one head MUST be driven within 10 us of all conditions becoming low | /WRITE GATE falls with the others low: one head low within 10 us |
 | The heads MUST end released after a write gate glitch | 250 ns gate pulse: both released afterwards |
-| After start-up no pin SHALL be an output, and no pin soldered to the FD3206P SHALL have a pull-up | all inputs high: every direction register zero, no pull-up on a soldered pin |
+| After start-up no pin SHALL be an output, every input SHALL have its pull-up and no head pin SHALL | all inputs high: every direction register zero, pull-ups on the four inputs, none on the heads |
+| The heads MUST be released within 100 us of /WRITE GATE going high while data edges arrive at the fastest rate | fastest data, gate closes: released within 100 us and for the next 100 edges |
+| Exactly one head MUST be driven within 100 us of /WRITE GATE going low while data edges arrive at the fastest rate | fastest data, gate opens: one head low within 100 us, alternating on every edge after |
 | The firmware MUST run undivided from its clock and keep the watchdog armed | after start-up: prescaler 1, watchdog enabled |
 | The watchdog MUST NOT fire during normal operation | 600 ms of edges, ten times the timeout: no reset, one head low after every edge |
 
@@ -287,9 +299,9 @@ On single-file saves the FD3206P still writes, on the same two pins, driven from
 <!-- figures:begin -->
 | Figure | Value |
 |---|---|
-| Flash used | 226 bytes |
+| Flash used | 238 bytes |
 | Edge handler | 15 instructions |
-| Firmware source | 221 non-blank lines |
+| Firmware source | 227 non-blank lines |
 <!-- figures:end -->
 
 Measured from the release build.
@@ -357,12 +369,13 @@ Written independently from public documentation. Only these sources informed the
 
 | Source | Facts taken |
 |:--|:--|
-| Famicom World, "Famicom Disk System FD3206 Write Mod" | FD3206P pads for +5 V, GND, /READY, /WRITE GATE, /WRITE PROTECT, WRITE DATA from its labelled board photos; head traces at pins 14 and 15; head drive behaviour of its 74LS76 and 74LS45 schematic |
+| Famicom World, "Famicom Disk System FD3206 Write Mod" | FD3206P pads for +5 V, GND, /READY, /WRITE GATE, /WRITABLE MEDIA, WRITE DATA from its labelled board photos, where pin 5 reads /WRITE PROTECT; head traces at pins 14 and 15; head drive behaviour of its 74LS76 and 74LS45 schematic |
 | Famicom World, "FDS Power Board Modifications" | Which power board revisions carry a write lockout and how each is removed |
 | nesdev forum threads 11342, 17037, 19856 and "Disable copy protection on the Twin Famicom AN-505BK" | The Twin Famicom power board change and per-model reports |
 | Brad Taylor, "Famicom Disk System technical reference", nesdev.org | 96.4 kHz bit rate, 10 percent tolerance, 1 us pulses, signal names |
 | nesdev wiki, "FDS RAM adaptor cable pinout" and "FDS disk format" | Signal names and polarities, gap lengths |
-| Microchip document 8246, ATtiny2313A/4313 | Pinout, interrupts, timed watchdog and prescaler sequences, supply range, pin current |
+| Microchip document 8246, ATtiny2313A/4313 | Pinout, input and output levels, interrupts, timed watchdog and prescaler sequences, oscillator accuracy, supply range, pin current |
+| nesdev forum, FMD-POWER-05 reverse-engineered schematic | Only +5 V and the +5 V motor rail reach the drive board; a 10 kOhm pull-up on /write; the signal name /writable media |
 | avrdude 8 part database | Fuse bit meanings and factory values |
 | FDSStick and ToToTEK product pages for the FD3206 V4 add-on chip | Install photo showing eight soldered pins and a pin 1 to pin 19 jumper, for the comparison only |
 

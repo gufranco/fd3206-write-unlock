@@ -10,10 +10,10 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 
 1. **Piggyback only.** The ATtiny sits on the FD3206P pin 1 over pin 1. Nothing on the drive board is cut and no other part is added: no resistor, diode, transistor, wire or capacitor. A change that needs any of them is out of scope, however much it would improve something. The rule covers the drive mechanism board. The power board's own write lockout, on FMD-POWER-04, -05, some -02 boards and the Twin Famicom AN-500, is a separate prerequisite that the docs describe and the firmware cannot remove.
 2. **ATtiny2313A or ATtiny4313 only.** The FD3206P pin map fixes which ATtiny pin meets which signal, and only the x313 puts GND, VCC, INT0 and a port pin on every signal pin at once. The 8-pin parts have five usable I/O and the design needs six; the sixth would be RESET, which would end in-system programming. Do not propose them again without a new pin argument.
-3. **The logic is the classic write stage, nothing more.** One flip-flop state changed by each falling edge of WRITE DATA, one head driven per state, both heads released unless /READY, /WRITE PROTECT and /WRITE GATE are all low. No detection, no heuristics, no state machine layered on top. An earlier revision watched the FD3206P and stepped aside when it wrote; it was removed because every guess is a new way to fail.
+3. **The logic is the classic write stage, nothing more.** One flip-flop state changed by each falling edge of WRITE DATA, one head driven per state, both heads released unless /READY, /WRITABLE MEDIA and /WRITE GATE are all low. No detection, no heuristics, no state machine layered on top. An earlier revision watched the FD3206P and stepped aside when it wrote; it was removed because every guess is a new way to fail.
 4. **Protection is allowed only when it is nearly free.** The watchdog, the brown-out fuse, pull-low outputs and debug-only assertions stay because each costs a few lines or nothing in the release image. Anything else needs a measured reason recorded here first.
 5. **A head pin pulls low or floats.** It is an output at 0 or an input, never an output at 1. The FD3206P shares pins 14 and 15, and a pin that never drives high cannot short against it.
-6. **Never drive a pin whose FD3206P function is unknown.** Only pins 4, 5, 6, 10, 13, 14, 15 and 20 are soldered. Every other pin is clipped, kept an input, and given its internal pull-up so it cannot float.
+6. **Never drive a pin whose FD3206P function is unknown.** Only pins 4, 5, 6, 10, 13, 14, 15 and 20 are soldered. Every other pin is clipped, kept an input, and given its internal pull-up so it cannot float. The four soldered inputs keep their internal pull-ups too: the ATtiny guarantees a high only from 3.0 V where the TTL parts it replaces accept 2.0 V, and the power board already pulls /WRITE GATE up with 10 kOhm. A head pin's port latch stays 0, which `pins.h` asserts at compile time, so enabling a head can only pull it low.
 7. **C17 and MISRA C:2012 with zero deviations, built only in the pinned Docker toolchain.** C17 is the newest standard MISRA C:2012 and its amendments cover; C23 features, and the C11 features rule 1.4 calls emergent such as `_Noreturn`, are out. `make analyse` runs the cppcheck MISRA addon over the debug and the release configuration and fails on any finding; there is no deviation list. Every compile, check and test runs in the image described by [`Dockerfile`](Dockerfile). The host needs Docker and Python 3; `make` delegates to the container. Programming with `avrdude` is the one step that runs on the host. Released firmware is built by the release pipeline, never by an IDE.
 8. **NASA Power of 10, adapted below.** Every exception is listed in the table in this file; there are no others.
 9. **No comments in source files, except the two SPDX header lines.** Names carry the meaning; explanation belongs here, in the READMEs, in the local `docs/` or in the commit message. [`tools/style_gate.py`](tools/style_gate.py) enforces it.
@@ -71,7 +71,7 @@ Fixed by the FD3206P. Each pin number is the same on both chips.
 | Pin | FD3206P signal | ATtiny2313A | Direction |
 |---|---|---|---|
 | 4 | /WRITE GATE | PA1 | input |
-| 5 | /WRITE PROTECT | PA0 | input |
+| 5 | /WRITABLE MEDIA, low means writable | PA0 | input |
 | 6 | WRITE DATA | PD2, INT0 | input, falling edge interrupt |
 | 10 | GND | GND | |
 | 13 | /READY | PB1 | input |
@@ -79,7 +79,7 @@ Fixed by the FD3206P. Each pin number is the same on both chips.
 | 15 | Head 1 | PB3 | pull low or float |
 | 20 | +5 V | VCC | |
 
-Source: the labelled solder-side photos in the Famicom World article "Famicom Disk System FD3206 Write Mod", which name +5V, GND, /READY, /WRITE GATE, /WRITE PROTECT and WRITE DATA on the FD3206P pads and mark the head traces beside pins 14 and 15.
+Source: the labelled solder-side photos in the Famicom World article "Famicom Disk System FD3206 Write Mod", which name +5V, GND, /READY, /WRITE GATE, /WRITE PROTECT and WRITE DATA on the FD3206P pads and mark the head traces beside pins 14 and 15. The reverse-engineered FMD-POWER-05 schematic on the nesdev forum names pin 5's signal /writable media and shows only +5 V and the +5 V motor rail reaching the drive board.
 
 ## Timing budget
 
@@ -90,9 +90,11 @@ The binding numbers, at the 8 MHz internal oscillator:
 | Bit cell | 10.4 us | 96.4 kHz, Brad Taylor, FDS technical reference |
 | Shortest spacing between WRITE DATA falling edges | 4.7 us | half a cell at the 10 percent fast limit |
 | WRITE DATA low pulse | about 1 us | same reference |
-| Interrupt handler, whole | must finish under 4.7 us, 37 cycles; today about 30 | instruction count of `write_data_edge.S` |
-| Interrupt taken to head written | 10 cycles | same |
-| Gate response | under 10 us, one bit cell; 8.125 us worst today, swept across 64 main-loop phases | a gate change falls in a gap of at least 480 bits, nesdev "FDS disk format" |
+| Interrupt handler, whole | must finish under 4.7 us, 37 cycles at 8 MHz and 33 at 7.2 MHz; today 32 at worst: 4 response, 2 vector, 22 or 23 in the handler, up to 3 for the main loop's `ret` in progress | instruction count and the AVR interrupt response in Microchip document 8246 |
+| Interrupt taken to head written | 10 cycles, plus up to 3 for the instruction in progress | same |
+| Interrupts held off by a condition change | at most 12 cycles: `fdswu_port_commit_heads` picks between two precomputed plans with interrupts off | instruction count of `port.S` |
+| Clock | internal RC, specified at +/-10 percent at 3 V; every scenario runs at 7.2, 8.0 and 8.8 MHz | Microchip document 8246, section 6.2.3 |
+| Gate response | under 10 us without data edges, 7.4 us worst at 8 MHz and 8.2 us at 7.2 MHz across 64 main-loop phases; under 100 us while data edges arrive at the fastest rate, 19 us and 23 us today | a gate change falls in a gap of at least 480 bits, nesdev "FDS disk format" |
 | Head pin sink current | 20 mA per pin | ATtiny2313A datasheet, Microchip document 8246 |
 
 A C interrupt that calls a helper saves every call-clobbered register and runs about 70 cycles, which is why the handler is assembly. Keep it free of `SREG` changes and of anything the C code owns: it reads and writes only `GPIOR0`, `GPIOR1`, `GPIOR2` and `DDRB`.
@@ -108,7 +110,7 @@ include/fdswu/       logic-layer headers: pins, heads plan, conditions, assertio
 include/port/        C prototypes of the port module, register names for the assembly
 src/                 firmware: logic modules, main loop, assembly port module, INT0 handler
 tests/host/          host unit tests of the logic layer
-tests/sim/           simavr harness and the 13 scenarios
+tests/sim/           simavr harness and the 15 scenarios, run at 7.2, 8.0 and 8.8 MHz
 tests/tools/         unit tests of the Python tools
 tests/type_widths.c  compile-time record of type widths per compiler
 tools/               Python gates and helpers called by the Makefile
@@ -166,6 +168,7 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | The simavr ioctl macros build their code from a `char`; on x86_64 `char` is signed, so CI failed `-Wsign-conversion` while the aarch64 build was clean | The same image passed every gate on the Mac | `make analyse` compiles the harness and host tests with both `-fsigned-char` and `-funsigned-char` |
 | Moving register access behind assembly calls pushed the gate response past 10 us: three calls per main-loop pass plus the update | Every other scenario passed | the gate-response scenarios; the loop now makes one `fdswu_port_poll` call that services the watchdog and samples both ports |
 | `_Noreturn`, valid C11, still broke MISRA: rule 1.4 lists it as an emergent feature | It compiled cleanly under `-pedantic-errors` | the MISRA gate in `make analyse`, calibrated against a planted `goto` |
+| simavr re-raised every input with its pull-up enabled to high on each port or direction write, overriding the level the harness drove, so the heads never engaged once the inputs gained pull-ups | It looked like the pull-ups broke the gating | the harness declares the pins it drives with `AVR_IOCTL_IOPORT_SET_EXTERNAL`, which simavr gives priority over a pull-up, as real hardware does |
 | The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; hard rule 7 |
 
 ## Real hardware
@@ -178,6 +181,7 @@ Nothing in this repository can drive a drive or a programmer, so a hardware resu
 | Are the FD3206P head outputs open collector | the piggyback design assumes it and no document states it |
 | Does a whole-disk write read back | the 2C33's decoding margin is not modelled |
 | What the edge-to-head delay really is | simavr enters the interrupt without the input synchroniser delay |
+| Do pins 14 and 15 idle at 5.5 V or less, and does a pulled head read 0.8 V or less | the head load and pull-ups sit on the drive board, which has no published schematic |
 | Does the drive's power board also block writes | FMD-POWER-04, -05, some -02 boards and the Twin Famicom AN-500 power board carry their own write lockout, outside the FD3206P; see the power board steps in [`README.md`](README.md) |
 
 ## Emulators

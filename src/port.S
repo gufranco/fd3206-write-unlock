@@ -3,13 +3,12 @@
 
 #include "port/registers.h"
 
-#if FDSWU_TOGGLE_BIT != 0
-#error "fdswu_port_begin_update returns the toggle bit as a bool, so it must be bit 0"
-#endif
-
 #define rFirst  r24
 #define rSecond r22
 #define rThird  r20
+#define rFourth r18
+#define rFifth  r16
+#define rSixth  r14
 #define rWork   r25
 
 #define WATCHDOG_CHANGE (_BV(WDCE) | _BV(WDE))
@@ -27,8 +26,9 @@ fdswu_port_start:
     ldi rWork, _BV(CLKPCE)
     out _SFR_IO_ADDR(CLKPR), rWork
     out _SFR_IO_ADDR(CLKPR), r1
-    out _SFR_IO_ADDR(PORTB), rFirst
-    out _SFR_IO_ADDR(PORTD), rSecond
+    out _SFR_IO_ADDR(PORTA), rFirst
+    out _SFR_IO_ADDR(PORTB), rSecond
+    out _SFR_IO_ADDR(PORTD), rThird
     out _SFR_IO_ADDR(FDSWU_HEAD_DIRECTION), r1
     ldi rWork, _BV(ISC01)
     out _SFR_IO_ADDR(MCUCR), rWork
@@ -46,20 +46,21 @@ fdswu_port_poll:
     in rWork, _SFR_IO_ADDR(PINB)
     ret
 
-    .section .text.fdswu_port_begin_update,"ax",@progbits
-    .global fdswu_port_begin_update
-fdswu_port_begin_update:
-    cli
-    in rFirst, _SFR_IO_ADDR(FDSWU_TOGGLE_STATE)
-    andi rFirst, _BV(FDSWU_TOGGLE_BIT)
-    ret
-
     .section .text.fdswu_port_commit_heads,"ax",@progbits
     .global fdswu_port_commit_heads
 fdswu_port_commit_heads:
+    cli
+    sbic _SFR_IO_ADDR(FDSWU_TOGGLE_STATE), FDSWU_TOGGLE_BIT
+    rjmp .Lcommit_set
     out _SFR_IO_ADDR(FDSWU_HEAD_DIRECTION), rFirst
     out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_HEADS), rSecond
     out _SFR_IO_ADDR(FDSWU_LATER_EDGE_HEADS), rThird
+    sei
+    ret
+.Lcommit_set:
+    out _SFR_IO_ADDR(FDSWU_HEAD_DIRECTION), rFourth
+    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_HEADS), rFifth
+    out _SFR_IO_ADDR(FDSWU_LATER_EDGE_HEADS), rSixth
     sei
     ret
 

@@ -5,6 +5,7 @@ MCU := attiny2313a
 AVRDUDE_PART := t2313a
 F_CPU := 8000000UL
 FLASH_BYTES := 2048
+SIM_CLOCKS_HZ := 7200000 8000000 8800000
 LFUSE := 0xE4
 HFUSE := 0xD9
 EFUSE := 0xFF
@@ -158,7 +159,7 @@ hosttest: $(HOST_TEST)
 		--fail-under-line 100 --fail-under-branch 100 --print-summary $(BUILD)/host
 
 simtest: $(SIM_TEST) $(RELEASE_ELF) $(INSTRUCTIONS)
-	$(SIM_TEST) $(MCU) $(RELEASE_ELF) $(INSTRUCTIONS)
+	$(foreach clock,$(SIM_CLOCKS_HZ),$(SIM_TEST) $(MCU) $(RELEASE_ELF) $(INSTRUCTIONS) $(clock) &&) true
 
 test: hosttest simtest
 

@@ -258,6 +258,8 @@ Before installing, measure on the drive with a multimeter, with no disk inserted
 2. Power on, chip not installed: clip a 1 kOhm resistor from pin 14 to GND with hook probes and read the voltage V on pin 14; repeat on pin 15. With V0 the idle voltage from step 1, the pin's source resistance is 1000 x (V0 - V) / V ohms. It must be at least 250 Ohm, so a head the ATtiny pulls low carries at most 20 mA, whether a resistor on the drive board or the FD3206P itself holds the line high. Below 250 Ohm, do not install. Leave the resistor on for a few seconds only: it may switch the head on, which is why no disk may be inserted.
 3. After installing, during a write on a disk you can lose: the pin pulled low reads 0.8 V or less, the ATtiny's rated low level at 20 mA.
 
+If you will read or write disks with an FDSStick or another device that plugs into the drive instead of the RAM adapter, check that device first, with the chip not installed: while it reads a disk you can lose, pin 4, /WRITE GATE, must stay at 3.0 V or more the whole time. The chip writes whenever pin 4 is low with a writable disk in a ready drive, and it needs 3.0 V to see a high. An early commercial modchip erased disks during FDSStick reads until FDSStick's software 20160214. If pin 4 drops below 3.0 V during a read, do not read disks with that device on this drive.
+
 1. Bend or clip the pins marked "clip" so they cannot touch the FD3206P. Their counterparts are signals nobody has documented, and the firmware never needs them.
 2. Lift out the drive mechanism and remove its bottom plate to reach the controller board.
 3. Place the ATtiny on the FD3206P with pin 1 over pin 1. Both notches face the same way.

@@ -191,6 +191,7 @@ Nothing in this repository can drive a drive or a programmer, so a hardware resu
 |---|---|
 | Does a single-file save still work with both chips writing the same heads | the FD3206P's own write stage is not modelled |
 | Is the high on pins 14 and 15 weak enough, a source resistance of 250 Ohm or more | no document says whether the FD3206P drives the head lines high or only releases them; the powered 1 kOhm test in the README's pre-install measurements settles it |
+| Does an FDSStick keep /WRITE GATE at 3.0 V or more while it reads | the chip writes whenever /WRITE GATE is low with a writable disk ready; an early commercial modchip erased disks during FDSStick reads until FDSStick software 20160214, and FDSStick's drive-side firmware is not published; FDSemu, its open relative, runs on a 3.3 V STM32, so a device of this kind may drive a high barely above the ATtiny's 3.0 V threshold |
 | Does a whole-disk write read back | the 2C33's decoding margin is not modelled |
 | What the edge-to-head delay really is | simavr enters the interrupt without the input synchroniser delay |
 | Do pins 14 and 15 idle at 5.5 V or less, and does a pulled head read 0.8 V or less | the head load and pull-ups sit on the drive board, which has no published schematic |

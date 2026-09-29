@@ -2,7 +2,7 @@
 
 <h1>fd3206-write-unlock</h1>
 
-[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | 繁體中文（香港）
+[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | 繁體中文
 
 <br>
 

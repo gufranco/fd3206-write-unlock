@@ -29,7 +29,7 @@ typedef struct {
 
 static const pin_t SIGNAL_PINS[SIGNAL_COUNT] = {
     [SIGNAL_WRITE_GATE] = {'A', 1},
-    [SIGNAL_WRITE_PROTECT] = {'A', 0},
+    [SIGNAL_WRITABLE_MEDIA] = {'A', 0},
     [SIGNAL_READY] = {'B', 1},
     [SIGNAL_WRITE_DATA] = {'D', 2},
 };

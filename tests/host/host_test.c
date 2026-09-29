@@ -49,9 +49,9 @@ static void plan_selects_one_head_per_toggle_state(void) {
 
 static bool expected_allow(uint8_t port_a, uint8_t port_b) {
     const bool gate_low = (port_a & 0x02U) == 0U;
-    const bool protect_low = (port_a & 0x01U) == 0U;
+    const bool writable_low = (port_a & 0x01U) == 0U;
     const bool ready_low = (port_b & 0x02U) == 0U;
-    return gate_low && protect_low && ready_low;
+    return gate_low && writable_low && ready_low;
 }
 
 static void conditions_allow_only_when_all_three_are_low(void) {

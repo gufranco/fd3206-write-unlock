@@ -29,13 +29,13 @@ enum {
 
 typedef struct {
     board_level_t write_gate;
-    board_level_t write_protect;
+    board_level_t writable_media;
     board_level_t ready;
 } write_conditions_t;
 
 static const write_conditions_t WRITING = {LEVEL_LOW, LEVEL_LOW, LEVEL_LOW};
 static const write_conditions_t GATE_CLOSED = {LEVEL_HIGH, LEVEL_LOW, LEVEL_LOW};
-static const write_conditions_t PROTECTED = {LEVEL_LOW, LEVEL_HIGH, LEVEL_LOW};
+static const write_conditions_t NOT_WRITABLE = {LEVEL_LOW, LEVEL_HIGH, LEVEL_LOW};
 static const write_conditions_t NOT_READY = {LEVEL_LOW, LEVEL_LOW, LEVEL_HIGH};
 
 static const char *target_mcu;
@@ -67,7 +67,7 @@ static uint64_t cycles_to_ns(const board_t *board, uint64_t cycles) {
 
 static void apply_conditions(board_t *board, write_conditions_t conditions) {
     board_set(board, SIGNAL_WRITE_GATE, conditions.write_gate);
-    board_set(board, SIGNAL_WRITE_PROTECT, conditions.write_protect);
+    board_set(board, SIGNAL_WRITABLE_MEDIA, conditions.writable_media);
     board_set(board, SIGNAL_READY, conditions.ready);
     run_ns(board, SETTLE_NS);
 }
@@ -129,8 +129,8 @@ static bool heads_released_while_write_gate_inactive(void) {
     return heads_released_under(GATE_CLOSED);
 }
 
-static bool heads_released_while_disk_write_protected(void) {
-    return heads_released_under(PROTECTED);
+static bool heads_released_while_disk_not_writable(void) {
+    return heads_released_under(NOT_WRITABLE);
 }
 
 static bool heads_released_while_drive_not_ready(void) {
@@ -208,8 +208,8 @@ static bool heads_release_when_write_gate_closes(void) {
     return heads_release_when_condition_goes_high(SIGNAL_WRITE_GATE);
 }
 
-static bool heads_release_when_write_protect_asserts(void) {
-    return heads_release_when_condition_goes_high(SIGNAL_WRITE_PROTECT);
+static bool heads_release_when_disk_becomes_not_writable(void) {
+    return heads_release_when_condition_goes_high(SIGNAL_WRITABLE_MEDIA);
 }
 
 static bool heads_release_when_ready_drops(void) {
@@ -303,12 +303,12 @@ typedef struct {
 
 static const test_case_t TESTS[] = {
     TEST_CASE(heads_released_while_write_gate_inactive),
-    TEST_CASE(heads_released_while_disk_write_protected),
+    TEST_CASE(heads_released_while_disk_not_writable),
     TEST_CASE(heads_released_while_drive_not_ready),
     TEST_CASE(one_head_low_and_alternating_at_fastest_data_rate),
     TEST_CASE(rising_edge_leaves_heads_unchanged),
     TEST_CASE(heads_release_when_write_gate_closes),
-    TEST_CASE(heads_release_when_write_protect_asserts),
+    TEST_CASE(heads_release_when_disk_becomes_not_writable),
     TEST_CASE(heads_release_when_ready_drops),
     TEST_CASE(one_head_engages_when_write_gate_opens),
     TEST_CASE(heads_end_released_after_write_gate_glitch),

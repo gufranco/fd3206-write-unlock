@@ -22,15 +22,29 @@ TYPES = (
 HEADER = re.compile(rf"^(?:{'|'.join(TYPES)})(?:\([a-z0-9][a-z0-9._/-]*\))?!?: \S")
 GIT_GENERATED = re.compile(r'^(?:Merge |Revert ")')
 ZERO_SHA = re.compile(r"^0+$")
+SKIP_TOKEN = re.compile(
+    r"\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]|^skip-checks: *true",
+    re.IGNORECASE | re.MULTILINE,
+)
+RELEASE_HEADER = re.compile(r"^chore\(release\): \d+\.\d+\.\d+ \[skip ci\]$")
+SKIP_PROBLEM = "message asks GitHub to skip every workflow for this commit"
 MAX_HEADER = 100
 USAGE_ERROR = 2
 ARGUMENT_COUNT = 3
 REPOSITORY: Path | None = None
 
 
+def content_lines(message: str) -> list[str]:
+    return [line for line in message.splitlines() if not line.startswith("#")]
+
+
 def header_of(message: str) -> str:
-    lines = (line for line in message.splitlines() if not line.startswith("#"))
-    return next((line for line in lines if line.strip()), "")
+    return next((line for line in content_lines(message) if line.strip()), "")
+
+
+def skips_ci(message: str, header: str) -> bool:
+    found = SKIP_TOKEN.search("\n".join(content_lines(message))) is not None
+    return found and not RELEASE_HEADER.match(header)
 
 
 def check(message: str) -> list[str]:
@@ -44,6 +58,8 @@ def check(message: str) -> list[str]:
         problems = [*problems, f"header is {len(header)} characters, over {MAX_HEADER}"]
     if header.endswith("."):
         problems = [*problems, "subject ends with a period"]
+    if skips_ci(message, header):
+        problems = [*problems, SKIP_PROBLEM]
     return problems
 
 

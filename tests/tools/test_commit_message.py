@@ -79,6 +79,29 @@ class CheckTest(unittest.TestCase):
 
         self.assertEqual(problems, [])
 
+    def test_skip_token_in_the_body_is_reported(self) -> None:
+        messages = [
+            "ci: change the release\n\nwith a [skip ci] header",
+            "fix: repair\n\n[CI SKIP]",
+            "docs: explain\n\nskip-checks: true",
+        ]
+
+        problems = [commit_message.check(message) for message in messages]
+
+        self.assertEqual(problems, [[commit_message.SKIP_PROBLEM]] * 3)
+
+    def test_release_commit_may_skip_ci(self) -> None:
+        message = "chore(release): 1.0.4 [skip ci]\n\n## 1.0.4 (2026-09-29)"
+
+        problems = commit_message.check(message)
+
+        self.assertEqual(problems, [])
+
+    def test_skip_token_in_a_comment_line_is_ignored(self) -> None:
+        problems = commit_message.check("fix: repair\n# [skip ci]\n")
+
+        self.assertEqual(problems, [])
+
 
 class MainTest(unittest.TestCase):
     def run_main(self, *arguments: str, cwd: Path | None = None) -> tuple[int, str]:

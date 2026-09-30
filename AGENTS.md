@@ -142,6 +142,8 @@ make flash      program the chip from the host, MCU=attiny4313 for that chip
 make clean      remove build output
 ```
 
+The working copy lives in a Dropbox folder. Once, right after `rm -rf build`, a build failed with an ELF missing between its link and `avr-objcopy` steps, and the same tree passed on a rerun; sync touching `build/` is the suspected cause, not a verified one. Rerun a single such failure before investigating the code.
+
 ## Releases
 
 semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, downloads the per-chip images that same CI run built and tested into a temporary directory, validates each with [`tools/check_hex.py`](tools/check_hex.py), and never rebuilds. Each release attaches both hex images with their SHA-256 files, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to both images, which meets SLSA Build Level 2. It then prepends the release notes to `CHANGELOG.md` and commits that file to `main` as `semantic-release-bot`, with the header `chore(release): <version> [skip ci]`, so the release commit starts no CI run and no second release; that commit is what lists semantic-release among the repository's contributors. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
@@ -183,6 +185,25 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | A commit body quoted the release commit's `[skip ci]` token while describing it, and GitHub honours the token anywhere in a message, so no workflow ran for that push | The token sat in the body, not the header | [`tools/commit_message.py`](tools/commit_message.py) rejects every skip token outside the release header |
 | The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; hard rule 7 |
 
+## Prior art
+
+Facts about the neighbouring designs, each with its source, so nobody re-derives them:
+
+- The classic wired mod cuts "two circuit board traces that link the original disk writing stage with the write head assembly" and rebuilds the stage with a 74LS76 and 74LS45; after it only that stage drives the head. Famicom World, "Famicom Disk System FD3206 Write Mod".
+- The drive's write stage is a toggle flip-flop whose "complimentary outputs" drive the head's two write wires, with "about 20 to 25 milliamperes" through the head in either direction. The drive holds a second IC besides the FD3206, which the reference calls "the 3213", with no stated function. Brad Taylor, "Famicom Disk System technical reference".
+- The GAL modchip in `Stephen-Arsenault/FDS-FD3206-Modchip` implements `Q.d = !Q`, `write_head_1 = !Q & !ready & !write_protect & !write_gate` and the same with `Q` for the second line, driving its outputs both ways; its README claims no test result.
+- FDSStick's own modchip line: v1, 2015, a wired mod that "can work with any fds game with save function like Zelda" but, on FDSStick, "when you read disk, it will format your disk"; v2, 2016, fixed that together with FDSStick software 20160214; v3, 2018, no trace cuts; v4, 2022-08-21, a piggyback soldered at 8 points, stated to work "100% as FD7201" with FDSStick, FDSemu, MGD1, Copy Master, Disk Hacker and Tonkachi Editor. The v4 chip's markings are sanded off in its photo, so its design is unknown; the GAL source above is dated 2022-07-27, which proves nothing about the relation. None of the posts explain a failure mechanism.
+- FDSStick's drive-side firmware is not published. `holodnak/stm32-fdsemu` and `holodnak/uc3-fdsemu` are open, but both emulate a drive rather than drive one.
+
+## Decided against
+
+| Idea | Decided | Why |
+|---|---|---|
+| Replace the FD3206P outright with an open, updatable controller with USB, first a Raspberry Pi Zero, then a Pico 2 | dropped by the owner on 2026-09-30 | 12 of the FD3206P's 20 pins and the role of the 3213 are undocumented, so it would start with a continuity map and a logic-analyzer capture of every pin; a Pi Zero cannot meet the microsecond timing from Linux and its GPIO are not 5 V tolerant. Research notes are in `docs/research.md`, local only. Do not re-propose unless the owner raises it |
+| Keep the flip-flop state through a watchdog reset, as a GAL never resets | 2026-09-29 | the watchdog fires only on a hung loop, and the edge handler has one cycle of budget left |
+| On-chip debug assertions | removed on 2026-09-29, hard rule 4 | none could fail, per ADR 0007 in `docs/adr/` |
+| Glitch filtering, detection logic, a flash checksum at boot | standing | hard rules 3 and 4 |
+
 ## Real hardware
 
 Nothing in this repository can drive a drive or a programmer, so a hardware result exists only when someone reports one. Ask before assuming a hardware run happened. What only a drive settles:
@@ -200,6 +221,17 @@ Nothing in this repository can drive a drive or a programmer, so a hardware resu
 ## Emulators
 
 simavr runs headless and opens nothing. Any other emulator used for a check runs headless too, with no window and no sound; a run someone asked to watch opens windowed and minimised, never full screen.
+
+## State (as of 2026-09-30)
+
+- Latest release v1.0.5: `fd3206-write-unlock-attiny2313a.hex` SHA-256 `53937f09bf5ad84a8cd3d4fd1159400f92c54a7e02aa64f102424d7111e9fc29`, `fd3206-write-unlock-attiny4313.hex` SHA-256 `72e293a25c19b02a693dfd483a4b4bec890c54f59caf9bdcff59a8b32eb13df3`, 230 bytes of flash each.
+- Every gate is green in CI: 20 simavr scenarios on both chips at three clocks, all 70 mutants killed with two equivalent ones recorded, a reproducible build, host and tool tests at 100 percent coverage.
+- The first drive session, in this order, each on a disk that can be lost:
+  1. With the chip not installed and no disk: pins 14 and 15 idle at 5.5 V or less, and the powered 1 kOhm test gives 250 Ohm or more.
+  2. With the chip not installed: pin 4 stays at 3.0 V or more through a whole FDSStick read, if an FDSStick will be used.
+  3. After installing: a game save, then read back.
+  4. A whole-disk write, read back several times.
+  5. A logic-analyzer trace of WRITE DATA on pin 6 against pins 14 and 15.
 
 ## What is not done
 

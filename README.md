@@ -237,7 +237,7 @@ The fuses are low `0xE4`, 8 MHz internal oscillator with no clock output, and hi
 
 ### Step 4: install the chip, FD3206P drives only
 
-The ATtiny4313 has the same pinout. It takes its own image, because its larger RAM moves the top of the stack.
+The ATtiny4313 has the same pinout. It takes its own image, because its larger RAM moves the top of the stack. Use the DIP-20 package, ATtiny2313A-PU or ATtiny4313-PU. The plain ATtiny2313 and the AT90S2313 are different parts, and no image is built for them.
 
 | ATtiny2313A pin | FD3206P signal | Action |
 |:--|:--|:--:|

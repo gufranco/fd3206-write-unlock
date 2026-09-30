@@ -9,3 +9,4 @@ specs/
 node_modules/
 dist/
 .vscode/
+PROMPT.md

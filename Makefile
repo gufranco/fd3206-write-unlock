@@ -98,11 +98,11 @@ images:
 
 image: $(RELEASE_HEX) $(INSTRUCTIONS)
 
-$(RELEASE)/%.c.o: src/%.c $(FIRMWARE_H)
+$(RELEASE)/%.c.o: src/%.c $(FIRMWARE_H) Makefile
 	@mkdir -p $(@D)
 	$(AVR_CC) $(AVR_CFLAGS) -c -o $@ $<
 
-$(RELEASE)/%.S.o: src/%.S include/port/registers.h
+$(RELEASE)/%.S.o: src/%.S include/port/registers.h Makefile
 	@mkdir -p $(@D)
 	$(AVR_CC) $(AVR_ASFLAGS) -c -o $@ $<
 

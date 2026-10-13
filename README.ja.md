@@ -359,7 +359,7 @@ FDSStick など、RAM アダプタではなくドライブに直接つなぐ機�
 
 ## バージョン管理
 
-リリースは [Semantic Versioning](https://semver.org/) に従い、パイプラインが通った後に `main` から自動で作られます。各[リリース](https://github.com/gufranco/fd3206-write-unlock/releases)にはリリースノート、チップごとのファームウェアの hex とその SHA-256、署名付きビルド来歴の Sigstore バンドル、両方の hex に証明を結び付けた SPDX 形式のソフトウェア部品表が付きます。来歴は GitHub ホストのランナー上でリリース用ワークフローが作成し、SLSA Build Level 2 を満たします。ダウンロードしたファイルは次のコマンドで検証できます。
+リリースは [Semantic Versioning](https://semver.org/) に従い、パイプラインが通った後に `main` から自動で作られます。各[リリース](https://github.com/gufranco/fd3206-write-unlock/releases)にはリリースノート、チップごとのファームウェアの hex とその SHA-256、署名付きビルド来歴の Sigstore バンドル、両方の hex に証明を結び付けた SPDX 形式のソフトウェア部品表、MIT ライセンスの本文が付きます。来歴は GitHub ホストのランナー上でリリース用ワークフローが作成し、SLSA Build Level 2 を満たします。ダウンロードしたファイルは次のコマンドで検証できます。
 
 ```sh
 gh attestation verify fd3206-write-unlock-attiny2313a.hex --repo gufranco/fd3206-write-unlock

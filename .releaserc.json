@@ -169,6 +169,10 @@
           {
             "path": "dist/fd3206-write-unlock.spdx.json",
             "label": "Software bill of materials, SPDX JSON"
+          },
+          {
+            "path": "dist/LICENSE.txt",
+            "label": "Licence, MIT"
           }
         ],
         "successComment": false,

@@ -359,7 +359,7 @@ Twin Famicom 使用相同的三美驱动机构，因此搭载 FD3206P 的机器�
 
 ## 版本管理
 
-发布版本遵循[语义化版本](https://semver.org/)，在流水线通过后由 `main` 自动生成。每个[发布版本](https://github.com/gufranco/fd3206-write-unlock/releases)都附有发布说明、每种芯片的固件 hex 及其 SHA-256、签名构建来源的 Sigstore 证明包，以及与两个 hex 绑定证明的 SPDX 软件物料清单。来源证明由发布工作流在 GitHub 托管的运行器上生成，满足 SLSA Build Level 2。下载后可用以下命令校验：
+发布版本遵循[语义化版本](https://semver.org/)，在流水线通过后由 `main` 自动生成。每个[发布版本](https://github.com/gufranco/fd3206-write-unlock/releases)都附有发布说明、每种芯片的固件 hex 及其 SHA-256、签名构建来源的 Sigstore 证明包，与两个 hex 绑定证明的 SPDX 软件物料清单，以及 MIT 许可证全文。来源证明由发布工作流在 GitHub 托管的运行器上生成，满足 SLSA Build Level 2。下载后可用以下命令校验：
 
 ```sh
 gh attestation verify fd3206-write-unlock-attiny2313a.hex --repo gufranco/fd3206-write-unlock

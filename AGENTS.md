@@ -146,7 +146,7 @@ The working copy lives in a Dropbox folder. Once, right after `rm -rf build`, a 
 
 ## Releases
 
-semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, downloads the per-chip images that same CI run built and tested into a temporary directory, validates each with [`tools/check_hex.py`](tools/check_hex.py), and never rebuilds. Each release attaches both hex images with their SHA-256 files, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to both images, which meets SLSA Build Level 2. It then prepends the release notes to `CHANGELOG.md` and commits that file to `main` as `semantic-release-bot`, with the header `chore(release): <version> [skip ci]`, so the release commit starts no CI run and no second release; that commit is what lists semantic-release among the repository's contributors. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`; `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
+semantic-release cuts a release from `main` after the `ci` workflow passes on a push, through [`.github/workflows/release.yml`](.github/workflows/release.yml). It releases only the commit CI verified, downloads the per-chip images that same CI run built and tested into a temporary directory, validates each with [`tools/check_hex.py`](tools/check_hex.py), and never rebuilds. Each release attaches both hex images with their SHA-256 files, the Sigstore bundle of its signed build provenance and an SPDX SBOM attested to both images, which meets SLSA Build Level 2. It then prepends the release notes to `CHANGELOG.md` and commits that file to `main` as `semantic-release-bot`, with the header `chore(release): <version> [skip ci]`, so the release commit starts no CI run and no second release; that commit is what lists semantic-release among the repository's contributors. Commit types decide the version, per [`.releaserc.json`](.releaserc.json): a breaking change is major, `feat` minor, `fix`, `perf` and `refactor` patch; `docs`, `test`, `build`, `ci`, `chore` and `style` release nothing. `v0.0.0` marks the history before automated releases. The release tooling is pinned in [`package.json`](package.json) and `pnpm-lock.yaml`, with transitive overrides and audit exceptions in [`pnpm-workspace.yaml`](pnpm-workspace.yaml), because pnpm 12 ignores the `pnpm` field of `package.json`; handlebars is held at 4.7.10, the first release past GHSA-8r5x-fm3f-whwj, GHSA-p8wg-vrv2-v86f and GHSA-xw65-4hp5-5hc7, until conventional-changelog-writer requires it itself. `conventional-changelog-conventionalcommits` stays on 9.x until `@semantic-release/release-notes-generator` accepts conventional-changelog-writer 9. Dependabot, per [`.github/dependabot.yml`](.github/dependabot.yml), groups weekly updates for actions, the Docker base image, the Python tools and the release tooling.
 
 ## Public repository
 
@@ -184,6 +184,7 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | The README said the ATtiny4313 runs the ATtiny2313A image; that image's start-up writes only SPL, so on the 4313, whose SPH resets to 1, the stack pointer lands at 0x1DF, past its RAM, and the first call crashes | The two chips share one datasheet and one pinout | each chip builds its own image, and the simavr suite runs each on its own core |
 | A commit body quoted the release commit's `[skip ci]` token while describing it, and GitHub honours the token anywhere in a message, so no workflow ran for that push | The token sat in the body, not the header | [`tools/commit_message.py`](tools/commit_message.py) rejects every skip token outside the release header |
 | The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; hard rule 7 |
+| New advisories against handlebars and braces, both pulled in by semantic-release, failed `pnpm audit` in every CI run on 2026-10-12 with nothing changed here, which also blocked every release | The firmware gates were all green | the `release-tooling` job; overrides and recorded audit exceptions live in `pnpm-workspace.yaml` |
 
 ## Prior art
 
@@ -204,6 +205,18 @@ Facts about the neighbouring designs, each with its source, so nobody re-derives
 | On-chip debug assertions | removed on 2026-09-29, hard rule 4 | none could fail, per ADR 0007 in `docs/adr/` |
 | Glitch filtering, detection logic, a flash checksum at boot | standing | hard rules 3 and 4 |
 | A 20-pin PIC in place of the ATtiny | 2026-09-30 | the PIC16F1829, Microchip DS40001440E, the PIC18F14K22, DS40001365F, and the PIC16F18346, DS40001839E, put VDD on pin 1 and VSS on pin 20; mounted pin 1 over pin 1, rotated or mirrored, one supply pin always lands on an FD3206P pin other than 10 and 20, whose function is unknown, so it would need a wire, against hard rules 1 and 6 |
+
+## Waivers
+
+| Field | Value |
+|---|---|
+| rule | `pnpm audit --audit-level high` passes with no exception, in the `ci` and `release` workflows |
+| scope | GHSA-vfj7-8cjw-p6xm, braces 3.0.3, reached only through `micromatch` inside the semantic-release tooling; `pnpm-workspace.yaml` |
+| approved_by | Gustavo Franco, 2026-10-13 |
+| rationale | No braces release fixes it. The flaw is a stack-exhaustion crash on deeply nested brace patterns, and semantic-release only expands patterns written in `.releaserc.json`, so nobody outside this repository can feed it one. Nothing from it ships in the firmware |
+| alternatives | Lowering the audit level to critical, which would hide every future high finding; replacing semantic-release, which removes the signed release flow |
+| risk | A crashed release run on a malicious pattern committed to `.releaserc.json`, which already requires write access to `main` |
+| revisit | When braces publishes a fix, or `pnpm audit` reports the advisory withdrawn; remove the entry then |
 
 ## Real hardware
 

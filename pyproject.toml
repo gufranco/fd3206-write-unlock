@@ -9,7 +9,7 @@ requires-python = ">=3.13"
 [tool.ruff]
 line-length = 88
 target-version = "py313"
-include = ["tools/**/*.py", "tests/**/*.py", ".githooks/pre-commit"]
+include = ["tools/**/*.py", "tests/**/*.py", ".githooks/pre-commit", ".githooks/commit-msg"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "PL", "RUF", "ANN", "PT", "RET", "ARG", "PTH", "S"]
@@ -17,6 +17,10 @@ ignore = ["S603", "S607", "PT009", "PT027"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["PLR2004", "S108"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
 
 [tool.coverage.run]
 branch = true

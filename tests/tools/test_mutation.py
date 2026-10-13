@@ -167,7 +167,9 @@ class RunCommandTest(unittest.TestCase):
 
 
 class MainTest(unittest.TestCase):
-    def run_main(self, runner: mutation.Runner, mutants: tuple) -> tuple[int, str, str]:
+    def run_main(
+        self, runner: mutation.Runner, mutants: tuple[mutation.Mutant, ...]
+    ) -> tuple[int, str, str]:
         root = make_repository()
         with (
             unittest.mock.patch.object(mutation, "MUTANTS", mutants),

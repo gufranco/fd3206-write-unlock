@@ -18,7 +18,7 @@ Firmware for an ATtiny2313A that sits on top of the Mitsumi FD3206P controller o
 8. **NASA Power of 10, adapted below.** Every exception is listed in the table in this file; there are no others.
 9. **No comments in source files, except the two SPDX header lines.** Names carry the meaning; explanation belongs here, in the READMEs, in the local `docs/` or in the commit message. [`tools/style_gate.py`](tools/style_gate.py) enforces it.
 10. **Registers are touched only in assembly.** Every register access lives in [`src/port.S`](src/port.S) and the INT0 handler, behind the C prototypes in [`include/port/port.h`](include/port/port.h). No C file includes an `avr/` or `util/` header, because avr-libc reaches registers through integer-to-pointer casts that MISRA rule 11.4 forbids and through inline assembly the checker cannot see. The watchdog and clock-prescaler timed sequences in `port.S` follow the ATtiny2313A datasheet, Microchip document 8246, and are checked in simulation.
-11. **Scripts are Python 3.** Build tooling and checks are Python with 100 percent line and branch coverage; Make recipes call a Python module rather than growing shell logic. No bash, awk or perl.
+11. **Scripts are Python 3.** Build tooling and checks are Python with 100 percent line and branch coverage and clean under `mypy --strict`, Git hooks included; Make recipes call a Python module rather than growing shell logic. No bash, awk or perl.
 12. **READMEs are commercial and technical, never development.** The four READMEs are the single source for what the product is, how to install it and how it works, and they never link into `docs/`. Development material, including build internals, test tiers and ADRs, lives in `docs/` or `specs/`, which are gitignored and never pushed. A README change lands in all four languages in the same commit; `make analyse` checks that their figures blocks agree with the build.
 13. **`make analyse test` passes before any commit.** `make hooks` installs a pre-commit hook that runs both.
 
@@ -126,7 +126,7 @@ build/               generated, never committed
 ```
 make            release hex for each chip, in Docker
 make size       firmware size
-make analyse    clang-format, ruff, style gate, layer check, REUSE, type widths, cppcheck with MISRA, README figures,
+make analyse    clang-format, ruff, mypy --strict, yamllint, style gate, layer check, REUSE, type widths, cppcheck with MISRA, README figures,
                 hex size and edge-handler cycle budget per chip, tool tests at 100 percent
 make test       host tests at 100 percent line and branch, then the simavr suite at 100 percent instructions
                 on each chip at three clocks, failing past 32 bytes of stack
@@ -186,6 +186,7 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; hard rule 7 |
 | New advisories against handlebars and braces, both pulled in by semantic-release, failed `pnpm audit` in every CI run on 2026-10-12 with nothing changed here, which also blocked every release | The firmware gates were all green | the `release-tooling` job; overrides and recorded audit exceptions live in `pnpm-workspace.yaml` |
 | CI and the release ran the Python tools on the runner's Python 3.12, below the 3.13 floor in `pyproject.toml`, while `.tool-versions` said 3.14 | Nothing in the tools needs 3.13 yet | both workflows install Python from `.tool-versions`, which matches the container |
+| `isr_check` passed an `rjmp` with no resolved target to `list.index`, which would crash with a bare `ValueError` instead of naming the instruction | Every real listing carries the target comment | `mypy --strict` flagged the `None`; the check now fails with the address of the jump, with a test |
 | The README figures and this file gave 230 bytes of flash for both chips; the ATtiny4313 image is 234 | `doc_figures` measured only the default `MCU` and reported success | `doc_figures` takes both release ELFs and the figures table names each chip |
 | `sim_test` read its clock with an unchecked `strtoul`, so `8MHz` ran every scenario at 8 Hz and `0` printed an impossible gate response | The Makefile always passes plain numbers | `sim_test` rejects a clock that is not a whole number of hertz above 0 |
 

@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
+extends: default
+
+ignore: |
+  build/
+  docs/
+  specs/
+  node_modules/
+  pnpm-lock.yaml
+
+rules:
+  document-start: disable
+  truthy:
+    check-keys: false
+  line-length:
+    max: 140
+    ignore: |
+      .github/ISSUE_TEMPLATE/

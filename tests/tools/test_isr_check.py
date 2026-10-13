@@ -137,6 +137,14 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("sleep has no cycle count", err)
 
+    def test_jump_without_a_target_fails(self) -> None:
+        listing = HANDLER.replace("\t; 0x70 <.Lset_toggle>", "") + COMMIT
+
+        code, _, err = self.run_main("33", "12", listing=listing)
+
+        self.assertEqual(code, 1)
+        self.assertIn("rjmp at 6a has no target", err)
+
     def test_missing_symbol_fails(self) -> None:
         code, _, err = self.run_main("33", "12", listing=HANDLER)
 

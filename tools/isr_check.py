@@ -98,6 +98,8 @@ def worst_cycles(program: list[Instruction], index: int, stop: str) -> int:
             2 + worst_cycles(program, index + 2, stop),
         )
     if instruction.mnemonic == "rjmp":
+        if instruction.target is None:
+            raise ListingError(f"rjmp at {instruction.address:x} has no target")
         addresses = [item.address for item in program]
         return cost("rjmp") + worst_cycles(
             program, addresses.index(instruction.target), stop

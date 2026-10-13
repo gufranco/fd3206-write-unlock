@@ -81,8 +81,8 @@ class MainTest(unittest.TestCase):
 
     def test_fails_when_no_function_is_defined(self) -> None:
         with (
-            unittest.mock.patch.object(
-                list_instructions.subprocess, "run", return_value=completed("")
+            unittest.mock.patch(
+                "tools.list_instructions.subprocess.run", return_value=completed("")
             ),
             unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors,
         ):
@@ -96,8 +96,8 @@ class MainTest(unittest.TestCase):
     def test_prints_one_line_per_instruction(self) -> None:
         outputs = [completed(NM_OUTPUT), completed(OBJDUMP_OUTPUT)]
         with (
-            unittest.mock.patch.object(
-                list_instructions.subprocess, "run", side_effect=outputs
+            unittest.mock.patch(
+                "tools.list_instructions.subprocess.run", side_effect=outputs
             ),
             unittest.mock.patch("builtins.print") as printed,
         ):

@@ -261,8 +261,9 @@ def main(arguments: list[str], runner: Runner = run_command) -> int:
             file=sys.stderr,
         )
         return 1
-    failures = []
-    for mutant in (*MUTANTS, *assembly_mutants(root)):
+    mutants: tuple[Mutant | LineMutant, ...] = (*MUTANTS, *assembly_mutants(root))
+    failures: list[str] = []
+    for mutant in mutants:
         try:
             result = judge(root, mutant, runner)
         except MutationError as error:

@@ -66,6 +66,7 @@ HOST_TEST_C := tests/host/host_test.c tests/host/host_assert.c
 SIM_TEST_C := tests/sim/sim_test.c tests/sim/scenario.c tests/sim/board.c
 C_FILES := $(FIRMWARE_C) $(FIRMWARE_H) $(HOST_TEST_C) $(SIM_TEST_C) tests/sim/board.h tests/sim/scenario.h tests/type_widths.c
 
+GIT_HOOKS := .githooks/pre-commit .githooks/commit-msg
 C_STD := -std=c17 -pedantic-errors
 WARNINGS := -Wall -Wextra -Wpedantic -Werror -Wconversion -Wsign-conversion -Wshadow -Wstrict-prototypes \
 	-Wmissing-prototypes -Wundef -Wcast-qual -Wswitch-enum -Wswitch-default -Wdouble-promotion \
@@ -132,6 +133,9 @@ analyse: images
 	clang-format --dry-run --Werror $(C_FILES)
 	ruff check
 	ruff format --check
+	mypy tools tests
+	$(foreach hook,$(GIT_HOOKS),mypy $(hook) &&) true
+	yamllint --strict .
 	$(PYTHON) -m tools.style_gate $(FIRMWARE_C) $(FIRMWARE_S) $(FIRMWARE_H)
 	$(PYTHON) -m tools.layer_check .
 	reuse lint

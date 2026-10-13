@@ -110,6 +110,40 @@ class LineVariantsTest(unittest.TestCase):
         self.assertEqual(variants, [[], [], []])
 
 
+class OperatorVariantsTest(unittest.TestCase):
+    def test_each_comparison_and_logical_operator_is_flipped(self) -> None:
+        variants = mutation.operator_variants("a == b && c != d || e")
+
+        self.assertEqual(
+            variants,
+            [
+                ("== became != at column 3", "a != b && c != d || e"),
+                ("!= became == at column 13", "a == b && c == d || e"),
+                ("&& became || at column 8", "a == b || c != d || e"),
+                ("|| became && at column 18", "a == b && c != d && e"),
+            ],
+        )
+
+    def test_shifts_and_arrows_are_not_comparisons(self) -> None:
+        variants = mutation.operator_variants("x >> 8U; p->q; a <= b; c < d; e > f")
+
+        self.assertEqual(
+            [name for name, _ in variants],
+            [
+                "<= became < at column 18",
+                "< became <= at column 26",
+                "> became >= at column 33",
+            ],
+        )
+
+    def test_preprocessor_and_licence_lines_are_skipped(self) -> None:
+        lines = ["#include <stdint.h>", "/* SPDX-x: A <a@b> */", "// x < y"]
+
+        variants = [mutation.operator_variants(line) for line in lines]
+
+        self.assertEqual(variants, [[], [], []])
+
+
 class EnclosingFunctionsTest(unittest.TestCase):
     def test_local_labels_stay_inside_their_function(self) -> None:
         lines = [
@@ -174,6 +208,7 @@ class MainTest(unittest.TestCase):
         with (
             unittest.mock.patch.object(mutation, "MUTANTS", mutants),
             unittest.mock.patch.object(mutation, "assembly_mutants", return_value=()),
+            unittest.mock.patch.object(mutation, "c_mutants", return_value=()),
             unittest.mock.patch("sys.stdout", new_callable=io.StringIO) as out,
             unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as err,
         ):
@@ -207,6 +242,12 @@ class MainTest(unittest.TestCase):
         self.assertIn("unmutated copy is killed by build", err)
         self.assertEqual(out, "")
 
+    def test_no_mutants_fails(self) -> None:
+        code, _, err = self.run_main(exit_codes(build=0, tests=0), ())
+
+        self.assertEqual(code, 1)
+        self.assertIn("no mutants were generated", err)
+
     def test_wrong_arguments_print_usage(self) -> None:
         with unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as err:
             code = mutation.main(["mutation.py"])
@@ -237,6 +278,18 @@ class CatalogueTest(unittest.TestCase):
         keys = {mutation.equivalence_key(m) for m in mutation.assembly_mutants(root)}
 
         self.assertEqual(keys & set(mutation.EQUIVALENT_MUTANTS), set())
+
+    def test_every_c_operator_mutant_applies_to_the_real_sources(self) -> None:
+        root = Path(__file__).resolve().parent.parent.parent
+        mutants = mutation.c_mutants(root)
+
+        changed = [
+            m.mutate((root / m.path).read_text()) != (root / m.path).read_text()
+            for m in mutants
+        ]
+
+        self.assertGreater(len(mutants), 0)
+        self.assertEqual(changed, [True] * len(mutants))
 
     def test_every_assembly_instruction_has_a_mutant(self) -> None:
         root = Path(__file__).resolve().parent.parent.parent

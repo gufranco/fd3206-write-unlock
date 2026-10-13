@@ -132,8 +132,9 @@ make test       host tests at 100 percent line and branch, then the simavr suite
                 on each chip at three clocks, failing past 32 bytes of stack
 make misra      the MISRA C:2012 gate alone, also part of analyse
 make mutation   delete every assembly instruction, swap every skip, bit set and interrupt flag, zero every
-                loaded constant, plus 12 hand-written breaks; each must fail the build or the tests,
-                except the equivalent mutants `tools/mutation.py` lists with their reasons
+                loaded constant, flip every comparison and logical operator in the C sources, plus 10
+                hand-written breaks; each must fail the build or the tests, except the equivalent
+                mutants `tools/mutation.py` lists with their reasons; a run that generates none fails
 make reproducible  build twice at different paths; both images must match byte for byte
 make figures    rewrite the README figures block
 make hooks      run analyse and test before every commit and check each commit message
@@ -243,7 +244,7 @@ simavr runs headless and opens nothing. Any other emulator used for a check runs
 ## State (as of 2026-10-13)
 
 - Latest release v1.0.5: `fd3206-write-unlock-attiny2313a.hex` SHA-256 `53937f09bf5ad84a8cd3d4fd1159400f92c54a7e02aa64f102424d7111e9fc29`, `fd3206-write-unlock-attiny4313.hex` SHA-256 `72e293a25c19b02a693dfd483a4b4bec890c54f59caf9bdcff59a8b32eb13df3`. The ATtiny2313A image uses 230 bytes of flash and the ATtiny4313 image 234, the four extra bytes being its SPH start-up write.
-- Every gate is green in CI: 20 simavr scenarios on both chips at three clocks, all 70 mutants killed with two equivalent ones recorded, a reproducible build, host and tool tests at 100 percent coverage.
+- Every gate is green in CI: 20 simavr scenarios on both chips at three clocks, all 74 mutants killed with two equivalent ones recorded, a reproducible build, host and tool tests at 100 percent coverage.
 - The first drive session, in this order, each on a disk that can be lost:
   1. With the chip not installed and no disk: pins 14 and 15 idle at 5.5 V or less, and the powered 1 kOhm test gives 250 Ohm or more.
   2. With the chip not installed: pin 4 stays at 3.0 V or more through a whole FDSStick read, if an FDSStick will be used.

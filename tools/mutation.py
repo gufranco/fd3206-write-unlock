@@ -21,6 +21,18 @@ IGNORED = shutil.ignore_patterns(
     "build", ".git", "node_modules", "docs", "specs", "__pycache__", "dist"
 )
 ASSEMBLY_SOURCES = ("src/port.S", "src/write_data_edge.S")
+C_SOURCES = ("src/conditions.c", "src/write_plan.c", "src/main.c")
+UNMUTATED_PREFIXES = ("#", "/*", "//")
+OPERATORS = (
+    ("== became !=", re.compile(r"=="), "!="),
+    ("!= became ==", re.compile(r"!="), "=="),
+    (">= became >", re.compile(r">="), ">"),
+    ("<= became <", re.compile(r"<="), "<"),
+    ("&& became ||", re.compile(r"&&"), "||"),
+    ("|| became &&", re.compile(r"\|\|"), "&&"),
+    ("< became <=", re.compile(r"(?<![<>=-])<(?![<=])"), "<="),
+    ("> became >=", re.compile(r"(?<![<>=-])>(?![>=])"), ">="),
+)
 INSTRUCTION = re.compile(r"^    ([a-z]+)\b(.*)$")
 LOAD_IMMEDIATE = re.compile(r"^(    ldi \w+, )(.+)$")
 FUNCTION_LABEL = re.compile(r"^([A-Za-z_]\w*):")
@@ -123,12 +135,6 @@ MUTANTS = (
         "    ldi rWork, 3\n    out _SFR_IO_ADDR(CLKPR), rWork\n",
     ),
     Mutant(
-        "gate and writable condition inverted",
-        "src/conditions.c",
-        "FDSWU_GATE_AND_WRITABLE_MASK) == 0U)",
-        "FDSWU_GATE_AND_WRITABLE_MASK) != 0U)",
-    ),
-    Mutant(
         "ready ignored",
         "src/conditions.c",
         " && ((port_b_pins & FDSWU_READY_MASK) == 0U)",
@@ -145,12 +151,6 @@ MUTANTS = (
         "src/port.S",
         "    sei\n    ret\n.Lcommit_set:",
         "    ret\n.Lcommit_set:",
-    ),
-    Mutant(
-        "write plan assertion inverted",
-        "src/write_plan.c",
-        "FDSWU_ASSERT((plan.now & plan.next_edge) == 0U);",
-        "FDSWU_ASSERT((plan.now & plan.next_edge) != 0U);",
     ),
     Mutant(
         "edge handler stops advancing the plan",
@@ -177,6 +177,31 @@ def line_variants(line: str) -> list[tuple[str, str | None]]:
     if immediate and immediate.group(2) != "0":
         variants = [*variants, ("immediate became 0", f"{immediate.group(1)}0")]
     return variants
+
+
+def operator_variants(line: str) -> list[tuple[str, str]]:
+    if line.lstrip().startswith(UNMUTATED_PREFIXES):
+        return []
+    return [
+        (
+            f"{name} at column {match.start() + 1}",
+            f"{line[: match.start()]}{replacement}{line[match.end() :]}",
+        )
+        for name, pattern, replacement in OPERATORS
+        for match in pattern.finditer(line)
+    ]
+
+
+def c_mutants(root: Path) -> tuple[LineMutant, ...]:
+    return tuple(
+        LineMutant(
+            f"{path}:{index + 1} {change}: {line.strip()}", path, "", index, line, new
+        )
+        for path in C_SOURCES
+        for lines in [(root / path).read_text().split("\n")]
+        for index, line in enumerate(lines)
+        for change, new in operator_variants(line)
+    )
 
 
 def enclosing_functions(lines: list[str]) -> list[str]:
@@ -261,7 +286,14 @@ def main(arguments: list[str], runner: Runner = run_command) -> int:
             file=sys.stderr,
         )
         return 1
-    mutants: tuple[Mutant | LineMutant, ...] = (*MUTANTS, *assembly_mutants(root))
+    mutants: tuple[Mutant | LineMutant, ...] = (
+        *MUTANTS,
+        *assembly_mutants(root),
+        *c_mutants(root),
+    )
+    if not mutants:
+        print("no mutants were generated; nothing was tested", file=sys.stderr)
+        return 1
     failures: list[str] = []
     for mutant in mutants:
         try:

@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/gufranco/fd3206-write-unlock/security/advisories/new
+    about: Report a security problem privately, never in a public issue.

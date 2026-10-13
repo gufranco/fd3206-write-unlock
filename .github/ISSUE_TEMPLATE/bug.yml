@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
+name: Bug report
+description: Report a firmware, build or documentation defect.
+title: "[bug] <short summary>"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What the chip, the build or the documentation did, and what you expected instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Chip
+      options:
+        - ATtiny2313A
+        - ATtiny4313
+        - Not chip-specific
+    validations:
+      required: true
+  - type: input
+    id: release
+    attributes:
+      label: Release or commit
+      placeholder: "e.g. v1.0.5 or a short commit SHA"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps and any make, avrdude or gate output, verbatim.
+    validations:
+      required: true

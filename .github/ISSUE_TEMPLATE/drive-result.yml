@@ -1,0 +1,114 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
+name: Drive result
+description: Report what happened on a real Famicom Disk System drive, so the project records results from real installs.
+title: "[drive] <controller> <power board> <works|partial|fails>"
+labels: ["hardware"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing on a real drive. Use a disk you can lose, and take the measurements from install step 4 before soldering. Every field below maps to a check the README asks for.
+  - type: dropdown
+    id: controller
+    attributes:
+      label: Drive controller
+      options:
+        - FD3206P
+        - FD7201P
+        - Not checked
+    validations:
+      required: true
+  - type: dropdown
+    id: power_board
+    attributes:
+      label: Power board
+      options:
+        - FMD-POWER-01
+        - FMD-POWER-02 without daughterboard
+        - FMD-POWER-02 with daughterboard
+        - FMD-POWER-03
+        - FMD-POWER-04
+        - FMD-POWER-05
+        - Twin Famicom, model in the notes
+        - Not checked
+    validations:
+      required: true
+  - type: dropdown
+    id: power_board_change
+    attributes:
+      label: Power board lockout change from install step 2
+      options:
+        - Done
+        - Not needed for this board
+        - Not done
+    validations:
+      required: true
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Chip
+      options:
+        - ATtiny2313A
+        - ATtiny4313
+    validations:
+      required: true
+  - type: input
+    id: release
+    attributes:
+      label: Release or commit flashed
+      placeholder: "e.g. v1.0.5"
+    validations:
+      required: true
+  - type: input
+    id: idle_voltage
+    attributes:
+      label: Pins 14 and 15 idle voltage, chip not installed
+      placeholder: "e.g. 4.9 V and 4.9 V"
+  - type: input
+    id: source_resistance
+    attributes:
+      label: Pins 14 and 15 source resistance from the 1 kOhm test
+      placeholder: "e.g. 1.2 kOhm and 1.2 kOhm"
+  - type: input
+    id: pulled_low
+    attributes:
+      label: Voltage on the pulled-low pin during a write
+      placeholder: "e.g. 0.3 V"
+  - type: input
+    id: write_gate
+    attributes:
+      label: Lowest pin 4 voltage during an FDSStick or similar read, chip not installed
+      placeholder: "e.g. 4.8 V, or not used"
+  - type: dropdown
+    id: save
+    attributes:
+      label: Game save, then read back
+      options:
+        - Works
+        - Fails
+        - Not tested
+    validations:
+      required: true
+  - type: dropdown
+    id: whole_disk
+    attributes:
+      label: Whole-disk write, read back several times
+      options:
+        - Works
+        - Partial, some reads fail
+        - Fails
+        - Not tested
+    validations:
+      required: true
+  - type: input
+    id: writer
+    attributes:
+      label: Tool or device that wrote the disk
+      placeholder: "e.g. a RAM adapter disk-writing tool, FDSStick"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Logic-analyzer captures of pin 6 against pins 14 and 15, photos, error numbers, anything unusual.

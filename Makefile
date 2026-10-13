@@ -80,6 +80,7 @@ SIM_LIBS := $(shell pkg-config --libs simavr libelf)
 
 RELEASE_OBJECTS := $(patsubst src/%,$(RELEASE)/%.o,$(FIRMWARE_C) $(FIRMWARE_S))
 INSTRUCTIONS := $(call image_path,$(MCU)).insn
+RELEASE_ELFS := $(foreach mcu,$(MCUS),$(call image_path,$(mcu)).elf)
 HOST_TEST := $(BUILD)/host/host_test
 SIM_TEST := $(BUILD)/sim/sim_test
 
@@ -124,8 +125,8 @@ $(SIM_TEST): $(SIM_TEST_C) tests/sim/board.h tests/sim/scenario.h
 size: $(RELEASE_ELF)
 	$(AVR_SIZE) $<
 
-figures: $(RELEASE_ELF)
-	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $< --update
+figures: images
+	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELFS) --update
 
 analyse: images
 	clang-format --dry-run --Werror $(C_FILES)
@@ -141,7 +142,7 @@ analyse: images
 	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -fsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
 	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -funsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
 	$(foreach config,$(CPPCHECK_CONFIGS),cppcheck $(CPPCHECK_FLAGS) $(config) --addon=misra $(FIRMWARE_C) &&) true
-	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELF)
+	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELFS)
 	$(foreach mcu,$(MCUS),$(PYTHON) -m tools.check_hex $(call image_path,$(mcu)).hex --max-bytes $(FLASH_BYTES) &&) true
 	$(foreach mcu,$(MCUS),$(PYTHON) -m tools.isr_check $(AVR_OBJDUMP) $(call image_path,$(mcu)).elf \
 		$(EDGE_HANDLER_BUDGET_CYCLES) $(INTERRUPTS_OFF_BUDGET_CYCLES) &&) true

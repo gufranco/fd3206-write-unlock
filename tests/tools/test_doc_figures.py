@@ -11,6 +11,7 @@ from pathlib import Path
 from tools import doc_figures
 
 LICENSE_TAG = "SPDX-" + "License-Identifier"
+COMMA = doc_figures.FULLWIDTH_COMMA
 
 SIZE_OUTPUT = """firmware.elf  :
 section           size      addr
@@ -20,6 +21,8 @@ section           size      addr
 .comment            18         0
 Total              339
 """
+
+ATTINY4313_SIZE_OUTPUT = SIZE_OUTPUT.replace("318         0", "322         0")
 
 OBJDUMP_OUTPUT = """
 00000000 <__vectors>:
@@ -35,7 +38,11 @@ OBJDUMP_OUTPUT = """
 """
 
 FIGURES = doc_figures.Figures(
-    flash_bytes=320, handler_instructions=3, source_lines=42, scenarios=2
+    flash_bytes=320,
+    attiny4313_flash_bytes=324,
+    handler_instructions=3,
+    source_lines=42,
+    scenarios=2,
 )
 
 README = f"""# Title
@@ -125,7 +132,10 @@ class BlockTest(unittest.TestCase):
             README, doc_figures.render(FIGURES, doc_figures.ENGLISH)
         )
 
-        self.assertIn("| Flash used | 320 bytes |", updated)
+        self.assertIn(
+            "| Flash used | 320 bytes on the ATtiny2313A, 324 on the ATtiny4313 |",
+            updated,
+        )
         self.assertNotIn("stale", updated)
         self.assertTrue(updated.endswith("Tail.\n"))
 
@@ -138,7 +148,11 @@ class BlockTest(unittest.TestCase):
     def test_japanese_labels_carry_the_same_values(self) -> None:
         block = doc_figures.render(FIGURES, doc_figures.JAPANESE)
 
-        self.assertIn("| フラッシュ使用量 | 320 バイト |", block)
+        self.assertIn(
+            "| フラッシュ使用量 | ATtiny2313A で 320 バイト、"
+            "ATtiny4313 で 324 バイト |",
+            block,
+        )
         self.assertIn("| エッジ割り込みハンドラ | 3 命令 |", block)
         self.assertIn("| ファームウェアのソース | 空行を除き 42 行 |", block)
 
@@ -146,8 +160,15 @@ class BlockTest(unittest.TestCase):
         simplified = doc_figures.render(FIGURES, doc_figures.SIMPLIFIED_CHINESE)
         hong_kong = doc_figures.render(FIGURES, doc_figures.HONG_KONG_CHINESE)
 
-        self.assertIn("| 闪存占用 | 320 字节 |", simplified)
-        self.assertIn("| 快閃記憶體用量 | 320 位元組 |", hong_kong)
+        self.assertIn(
+            f"| 闪存占用 | ATtiny2313A 为 320 字节{COMMA}ATtiny4313 为 324 字节 |",
+            simplified,
+        )
+        self.assertIn(
+            f"| 快閃記憶體用量 | ATtiny2313A 為 320 位元組{COMMA}"
+            "ATtiny4313 為 324 位元組 |",
+            hong_kong,
+        )
 
     def test_every_language_has_a_readme(self) -> None:
         names = sorted(doc_figures.READMES)
@@ -164,15 +185,22 @@ class MainTest(unittest.TestCase):
             str(root),
             "avr-size",
             "avr-objdump",
-            "firmware.elf",
+            "attiny2313a.elf",
+            "attiny4313.elf",
             *extra,
         ]
 
     def run_main(self, root: Path, *extra: str) -> tuple[int, str]:
-        outputs = {"avr-size": SIZE_OUTPUT, "avr-objdump": OBJDUMP_OUTPUT}
+        outputs = {
+            ("avr-size", "attiny2313a.elf"): SIZE_OUTPUT,
+            ("avr-size", "attiny4313.elf"): ATTINY4313_SIZE_OUTPUT,
+            ("avr-objdump", "attiny2313a.elf"): OBJDUMP_OUTPUT,
+        }
         with (
             unittest.mock.patch.object(
-                doc_figures, "run", side_effect=lambda command: outputs[command[0]]
+                doc_figures,
+                "run",
+                side_effect=lambda command: outputs[(command[0], command[-1])],
             ),
             unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as errors,
         ):
@@ -194,7 +222,7 @@ class MainTest(unittest.TestCase):
 
         self.assertEqual(results, (0, 0))
         self.assertIn("320 バイト", (root / "README.ja.md").read_text())
-        self.assertIn("320 位元組", (root / "README.zh-HK.md").read_text())
+        self.assertIn("324 位元組", (root / "README.zh-HK.md").read_text())
 
     def test_stale_japanese_readme_alone_fails_the_check(self) -> None:
         root = make_root()
@@ -206,6 +234,17 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("README.ja.md", errors)
         self.assertNotIn("README.md:", errors)
+
+    def test_each_chip_reports_the_flash_of_its_own_image(self) -> None:
+        root = make_root()
+
+        self.run_main(root, "--update")
+
+        text = (root / "README.md").read_text()
+        self.assertIn(
+            "| Flash used | 320 bytes on the ATtiny2313A, 324 on the ATtiny4313 |", text
+        )
+        self.assertIn("<b>320</b> bytes of flash", text)
 
     def test_update_rewrites_the_inline_figures(self) -> None:
         root = make_root()

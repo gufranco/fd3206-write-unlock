@@ -186,6 +186,7 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | The Arduino IDE toolchain for this part is avr-gcc 7.3, which has no C23 | The IDE route had worked for the gnu11 source | the IDE route was removed; hard rule 7 |
 | New advisories against handlebars and braces, both pulled in by semantic-release, failed `pnpm audit` in every CI run on 2026-10-12 with nothing changed here, which also blocked every release | The firmware gates were all green | the `release-tooling` job; overrides and recorded audit exceptions live in `pnpm-workspace.yaml` |
 | CI and the release ran the Python tools on the runner's Python 3.12, below the 3.13 floor in `pyproject.toml`, while `.tool-versions` said 3.14 | Nothing in the tools needs 3.13 yet | both workflows install Python from `.tool-versions`, which matches the container |
+| The README figures and this file gave 230 bytes of flash for both chips; the ATtiny4313 image is 234 | `doc_figures` measured only the default `MCU` and reported success | `doc_figures` takes both release ELFs and the figures table names each chip |
 
 ## Prior art
 
@@ -237,9 +238,9 @@ Nothing in this repository can drive a drive or a programmer, so a hardware resu
 
 simavr runs headless and opens nothing. Any other emulator used for a check runs headless too, with no window and no sound; a run someone asked to watch opens windowed and minimised, never full screen.
 
-## State (as of 2026-09-30)
+## State (as of 2026-10-13)
 
-- Latest release v1.0.5: `fd3206-write-unlock-attiny2313a.hex` SHA-256 `53937f09bf5ad84a8cd3d4fd1159400f92c54a7e02aa64f102424d7111e9fc29`, `fd3206-write-unlock-attiny4313.hex` SHA-256 `72e293a25c19b02a693dfd483a4b4bec890c54f59caf9bdcff59a8b32eb13df3`, 230 bytes of flash each.
+- Latest release v1.0.5: `fd3206-write-unlock-attiny2313a.hex` SHA-256 `53937f09bf5ad84a8cd3d4fd1159400f92c54a7e02aa64f102424d7111e9fc29`, `fd3206-write-unlock-attiny4313.hex` SHA-256 `72e293a25c19b02a693dfd483a4b4bec890c54f59caf9bdcff59a8b32eb13df3`. The ATtiny2313A image uses 230 bytes of flash and the ATtiny4313 image 234, the four extra bytes being its SPH start-up write.
 - Every gate is green in CI: 20 simavr scenarios on both chips at three clocks, all 70 mutants killed with two equivalent ones recorded, a reproducible build, host and tool tests at 100 percent coverage.
 - The first drive session, in this order, each on a disk that can be lost:
   1. With the chip not installed and no disk: pins 14 and 15 idle at 5.5 V or less, and the powered 1 kOhm test gives 250 Ohm or more.

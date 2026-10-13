@@ -21,7 +21,8 @@ HANDLER_SYMBOL = "__vector_1"
 SCENARIO_SOURCE = "tests/sim/sim_test.c"
 SCENARIO_ROW = re.compile(r"^    TEST_CASE\(", re.MULTILINE)
 PLACEHOLDER = "{}"
-POSITIONAL_ARGUMENTS = 5
+FULLWIDTH_COMMA = "\uff0c"
+POSITIONAL_ARGUMENTS = 6
 USAGE_ERROR = 2
 
 
@@ -40,7 +41,7 @@ class Labels:
 
 ENGLISH = Labels(
     header="| Figure | Value |",
-    flash="| Flash used | {} bytes |",
+    flash="| Flash used | {} bytes on the ATtiny2313A, {} on the ATtiny4313 |",
     handler="| Edge handler | {} instructions |",
     source="| Firmware source | {} non-blank lines |",
     inline=(
@@ -52,7 +53,7 @@ ENGLISH = Labels(
 )
 JAPANESE = Labels(
     header="| 項目 | 値 |",
-    flash="| フラッシュ使用量 | {} バイト |",
+    flash="| フラッシュ使用量 | ATtiny2313A で {} バイト、ATtiny4313 で {} バイト |",
     handler="| エッジ割り込みハンドラ | {} 命令 |",
     source="| ファームウェアのソース | 空行を除き {} 行 |",
     inline=(
@@ -64,7 +65,10 @@ JAPANESE = Labels(
 )
 SIMPLIFIED_CHINESE = Labels(
     header="| 项目 | 数值 |",
-    flash="| 闪存占用 | {} 字节 |",
+    flash=(
+        f"| 闪存占用 | ATtiny2313A 为 {{}} 字节{FULLWIDTH_COMMA}"
+        "ATtiny4313 为 {} 字节 |"
+    ),
     handler="| 边沿中断处理程序 | {} 条指令 |",
     source="| 固件源代码 | 非空行 {} 行 |",
     inline=(
@@ -76,7 +80,10 @@ SIMPLIFIED_CHINESE = Labels(
 )
 HONG_KONG_CHINESE = Labels(
     header="| 項目 | 數值 |",
-    flash="| 快閃記憶體用量 | {} 位元組 |",
+    flash=(
+        f"| 快閃記憶體用量 | ATtiny2313A 為 {{}} 位元組{FULLWIDTH_COMMA}"
+        "ATtiny4313 為 {} 位元組 |"
+    ),
     handler="| 邊緣中斷處理程式 | {} 條指令 |",
     source="| 韌體原始碼 | 非空行 {} 行 |",
     inline=(
@@ -97,6 +104,7 @@ READMES = {
 @dataclass(frozen=True, slots=True)
 class Figures:
     flash_bytes: int
+    attiny4313_flash_bytes: int
     handler_instructions: int
     source_lines: int
     scenarios: int
@@ -153,7 +161,7 @@ def render(figures: Figures, labels: Labels) -> str:
         [
             labels.header,
             "|---|---|",
-            labels.flash.format(figures.flash_bytes),
+            labels.flash.format(figures.flash_bytes, figures.attiny4313_flash_bytes),
             labels.handler.format(figures.handler_instructions),
             labels.source.format(figures.source_lines),
         ]
@@ -172,9 +180,12 @@ def run(command: list[str]) -> str:
     return subprocess.run(command, check=True, capture_output=True, text=True).stdout
 
 
-def measure(root: Path, size_tool: str, objdump_tool: str, elf: str) -> Figures:
+def measure(
+    root: Path, size_tool: str, objdump_tool: str, elf: str, attiny4313_elf: str
+) -> Figures:
     return Figures(
         flash_bytes=flash_bytes(run([size_tool, "-A", elf])),
+        attiny4313_flash_bytes=flash_bytes(run([size_tool, "-A", attiny4313_elf])),
         handler_instructions=handler_instructions(
             run([objdump_tool, "-d", elf]), HANDLER_SYMBOL
         ),
@@ -204,7 +215,8 @@ def check_readme(readme: Path, figures: Figures, labels: Labels, update: bool) -
 def main(arguments: list[str]) -> int:
     if len(arguments) < POSITIONAL_ARGUMENTS:
         print(
-            "usage: doc_figures.py <root> <size> <objdump> <firmware.elf> [--update]",
+            "usage: doc_figures.py <root> <size> <objdump> <attiny2313a.elf> "
+            "<attiny4313.elf> [--update]",
             file=sys.stderr,
         )
         return USAGE_ERROR

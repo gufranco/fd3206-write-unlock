@@ -308,7 +308,7 @@ Famicom World 的照片把 5 脚标为 /WRITE PROTECT。电源板和 RAM 适配�
 <!-- figures:begin -->
 | 项目 | 数值 |
 |---|---|
-| 闪存占用 | 230 字节 |
+| 闪存占用 | ATtiny2313A 为 230 字节，ATtiny4313 为 234 字节 |
 | 边沿中断处理程序 | 15 条指令 |
 | 固件源代码 | 非空行 190 行 |
 <!-- figures:end -->

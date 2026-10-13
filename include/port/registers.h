@@ -4,6 +4,10 @@
 #ifndef FDSWU_PORT_REGISTERS_H
 #define FDSWU_PORT_REGISTERS_H
 
+#if !defined(__AVR_ATtiny2313A__) && !defined(__AVR_ATtiny4313__)
+#error "unsupported MCU: the firmware targets the ATtiny2313A and the ATtiny4313 only"
+#endif
+
 #include <avr/io.h>
 
 #define FDSWU_NEXT_EDGE_LINES      GPIOR0

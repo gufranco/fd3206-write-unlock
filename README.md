@@ -311,7 +311,7 @@ On single-file saves the FD3206P still writes, on the same two pins, from its ow
 |---|---|
 | Flash used | 230 bytes on the ATtiny2313A, 234 on the ATtiny4313 |
 | Edge handler | 15 instructions |
-| Firmware source | 190 non-blank lines |
+| Firmware source | 193 non-blank lines |
 <!-- figures:end -->
 
 Measured from the release build.

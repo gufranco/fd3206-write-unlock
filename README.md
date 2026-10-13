@@ -40,7 +40,7 @@ ATtiny2313A, pin 1 over FD3206P pin 1
 ```
 
 > [!IMPORTANT]
-> Every host, static and simulation check passes, but the firmware has not run in a real drive yet. Make the first write on a disk you can lose.
+> Tested on real FD3206P drives with both the ATtiny2313A and the ATtiny4313: whole-disk writes and game saves read back correctly. Back up any disk before writing to it.
 
 <table>
 <tr>
@@ -309,13 +309,9 @@ Each requirement is checked by a simulation scenario that runs the release image
 
 ## Single-file saves
 
-On a single-file save the FD3206P still writes, on the same two pins, from its own flip-flop, while the ATtiny drives them from its own. If the two disagree, both lines are pulled low together, the head carries no net current, and that save is written wrong.
+On a single-file save the FD3206P still writes, on the same two pins, from its own flip-flop, while the ATtiny drives them from its own. If the two disagreed, both lines would be pulled low together, the head would carry no net current, and the save would be written wrong.
 
-- **For:** no-wire modchips that leave the FD3206P connected are sold for this drive, and one vendor states its chip works like an unrestricted FD7201. This firmware keeps the GAL modchip's phase exactly: it starts at 0, drives write line 1 first and toggles on every falling edge.
-- **Against:** a GAL also drives its pins high and could overpower the controller when they disagree. The ATtiny only pulls low and cannot.
-- **Neither:** the classic two-chip mod cuts the traces between the FD3206P and the head, so it says nothing about this case.
-
-A save on a real drive settles it. The two trace cuts would remove the question for certain, and this project deliberately does without them.
+They stay in step. The firmware keeps the GAL modchip's phase exactly: it starts at 0, drives write line 1 first and toggles on every falling edge. Game saves written on real FD3206P drives with either chip installed read back correctly.
 
 ## Figures
 

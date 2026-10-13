@@ -152,7 +152,7 @@ semantic-release cuts a release from `main` after the `ci` workflow passes on a 
 
 ## Public repository
 
-The repository is public. Secret scanning with push protection, Dependabot alerts and security updates, and private vulnerability reporting are on; [`SECURITY.md`](SECURITY.md) routes reports there and states what counts as a security issue. Blank issues are off: [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE) offers a bug report and a drive result, whose fields are the measurements and tests of the first drive session below. Rulesets forbid deleting or force-pushing `main` and deleting or moving `v*` tags. [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) runs CodeQL over the workflows, the C sources and the Python tools, and [`.github/workflows/scorecard.yml`](.github/workflows/scorecard.yml) publishes the OpenSSF Scorecard. Every file carries SPDX headers or a [`REUSE.toml`](REUSE.toml) annotation, and `make analyse` runs `reuse lint`. [`tools/commit_message.py`](tools/commit_message.py) checks every pushed commit header in CI and, after `make hooks`, locally: a conventional type, a subject that starts lowercase, at most 50 characters and no closing period. Commits written by Dependabot or `semantic-release-bot` are exempt, since neither can shorten its own header. It also rejects a GitHub skip token such as `[skip ci]` anywhere in a message except the release commit's header. Nothing development-only is committed: `docs/` and `specs/` stay local, per hard rule 12. The GitHub description is copied from the README tagline and metrics, never written separately.
+The repository is public. Secret scanning with push protection, Dependabot alerts and security updates, and private vulnerability reporting are on; [`SECURITY.md`](SECURITY.md) routes reports there and states what counts as a security issue. Blank issues are off: [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE) offers a bug report and a drive result, whose fields are the readings and tests listed under Real hardware below. Rulesets forbid deleting or force-pushing `main` and deleting or moving `v*` tags. [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) runs CodeQL over the workflows, the C sources and the Python tools, and [`.github/workflows/scorecard.yml`](.github/workflows/scorecard.yml) publishes the OpenSSF Scorecard. Every file carries SPDX headers or a [`REUSE.toml`](REUSE.toml) annotation, and `make analyse` runs `reuse lint`. [`tools/commit_message.py`](tools/commit_message.py) checks every pushed commit header in CI and, after `make hooks`, locally: a conventional type, a subject that starts lowercase, at most 50 characters and no closing period. Commits written by Dependabot or `semantic-release-bot` are exempt, since neither can shorten its own header. It also rejects a GitHub skip token such as `[skip ci]` anywhere in a message except the release commit's header. Nothing development-only is committed: `docs/` and `specs/` stay local, per hard rule 12. The GitHub description is copied from the README tagline and metrics, never written separately.
 
 ## Measuring a change
 
@@ -227,14 +227,21 @@ Facts about the neighbouring designs, each with its source, so nobody re-derives
 
 ## Real hardware
 
-Nothing in this repository can drive a drive or a programmer, so a hardware result exists only when someone reports one. Ask before assuming a hardware run happened. What only a drive settles:
+Nothing in this repository can drive a drive or a programmer, so a hardware result exists only when someone reports one. Ask before assuming a hardware run happened.
+
+Reported by the owner on 2026-10-13: the firmware runs on real FD3206P drives with both the ATtiny2313A and the ATtiny4313. On each, a game save and a whole-disk write read back correctly. The report names no power board, writer tool or release, and includes none of the pre-install readings and no logic-analyzer trace.
+
+| Question | Answer | Why simulation cannot |
+|---|---|---|
+| Does a single-file save still work with both chips driving the same write lines | yes, on both chips, 2026-10-13 | the FD3206P's own write stage is not modelled |
+| Does a whole-disk write read back | yes, on both chips, 2026-10-13 | the 2C33's decoding margin is not modelled |
+
+Still open:
 
 | Question | Why simulation cannot |
 |---|---|
-| Does a single-file save still work with both chips driving the same write lines | the FD3206P's own write stage is not modelled |
 | Is the high on pins 14 and 15 weak enough, a source resistance of 250 Ohm or more | no document says whether the FD3206P drives the write lines high or only releases them; the powered 1 kOhm test in the README's pre-install measurements settles it |
 | Does an FDSStick keep /WRITE GATE at 3.0 V or more while it reads | the chip writes whenever /WRITE GATE is low with a writable disk ready; an early commercial modchip erased disks during FDSStick reads until FDSStick software 20160214, and FDSStick's drive-side firmware is not published; FDSemu, its open relative, runs on a 3.3 V STM32, so a device of this kind may drive a high barely above the ATtiny's 3.0 V threshold |
-| Does a whole-disk write read back | the 2C33's decoding margin is not modelled |
 | What the edge-to-write-line delay really is | simavr enters the interrupt without the input synchroniser delay |
 | Do pins 14 and 15 idle at 5.5 V or less, and does a pulled write line read 0.8 V or less | the head load and pull-ups sit on the drive board, which has no published schematic |
 | Does the drive's power board also block writes | FMD-POWER-04, -05, some -02 boards and the Twin Famicom AN-500 power board carry their own write lockout, outside the FD3206P; see the power board steps in [`README.md`](README.md) |
@@ -247,14 +254,14 @@ simavr runs headless and opens nothing. Any other emulator used for a check runs
 
 - Latest release v1.0.5: `fd3206-write-unlock-attiny2313a.hex` SHA-256 `53937f09bf5ad84a8cd3d4fd1159400f92c54a7e02aa64f102424d7111e9fc29`, `fd3206-write-unlock-attiny4313.hex` SHA-256 `72e293a25c19b02a693dfd483a4b4bec890c54f59caf9bdcff59a8b32eb13df3`. The ATtiny2313A image uses 230 bytes of flash and the ATtiny4313 image 234, the four extra bytes being its SPH start-up write.
 - Every gate is green in CI: 20 simavr scenarios on both chips at three clocks, all 75 mutants killed with two equivalent ones recorded, a reproducible build, host and tool tests at 100 percent coverage.
-- The first drive session, in this order, each on a disk that can be lost:
+- Runs on real hardware, reported 2026-10-13: game saves and whole-disk writes read back on FD3206P drives with both chips.
+- Hardware checks still open, each on a disk that can be lost:
   1. With the chip not installed and no disk: pins 14 and 15 idle at 5.5 V or less, and the powered 1 kOhm test gives 250 Ohm or more.
   2. With the chip not installed: pin 4 stays at 3.0 V or more through a whole FDSStick read, if an FDSStick will be used.
-  3. After installing: a game save, then read back.
-  4. A whole-disk write, read back several times.
-  5. A logic-analyzer trace of WRITE DATA on pin 6 against pins 14 and 15.
+  3. During a write: the pulled write line reads 0.8 V or less.
+  4. A logic-analyzer trace of WRITE DATA on pin 6 against pins 14 and 15.
 
 ## What is not done
 
-- Nothing has run on a drive.
-- Whether single-file saves suffer from the FD3206P and the ATtiny driving the same write lines out of phase is unproven. For: no-wire modchips that leave the FD3206P connected are sold, one vendor states its chip works like an unrestricted FD7201, and this firmware keeps the GAL's phase exactly. Against: a GAL also drives high and could overpower the controller, which a pull-low-only ATtiny cannot. The classic two-chip mod is no evidence, because it cuts the FD3206P off the head.
+- No electrical measurement from a real drive is recorded: the idle voltage and source resistance of pins 14 and 15, the pulled-low level, and the edge-to-write-line delay remain unmeasured.
+- Which power boards and writer tools the working drives used is not recorded.

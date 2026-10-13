@@ -410,6 +410,11 @@ int main(int argc, char **argv) {
            frequency_hz, test_count, failures, missing);
     const uint16_t stack = board_deepest_stack();
     printf("deepest stack: %u bytes of %d allowed\n", (unsigned)stack, STACK_LIMIT_BYTES);
-    const bool stack_fits = stack <= STACK_LIMIT_BYTES;
-    return failures == 0 && missing == 0 && stack_fits ? EXIT_SUCCESS : EXIT_FAILURE;
+    const int64_t free_ram = board_least_free_ram();
+    printf("least RAM between the stack and static data: %" PRId64 " bytes\n", free_ram);
+    const uint32_t line_faults = board_write_line_faults();
+    printf("instructions with a write line driven high or both pulled low: %" PRIu32 "\n", line_faults);
+    const bool stack_fits = stack <= STACK_LIMIT_BYTES && free_ram >= 0;
+    const bool lines_valid = line_faults == 0U;
+    return failures == 0 && missing == 0 && stack_fits && lines_valid ? EXIT_SUCCESS : EXIT_FAILURE;
 }

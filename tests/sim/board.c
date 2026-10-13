@@ -17,6 +17,7 @@ enum {
     STARTUP_US = 200,
     HZ_PER_MHZ = 1000000,
     RAM_START = 0x60,
+    DATA_ADDRESS_BITS = 0xFFFF,
     PORT_COUNT = 4,
     PORT_NAME_BITS = 0x7F,
     CLOCK_PRESCALER_ADDRESS = 0x46,
@@ -55,9 +56,12 @@ struct board {
     uint8_t driven_value[PORT_COUNT];
     uint64_t prescaler_change_until;
     bool prescaler_change_armed;
+    uint32_t static_data_end;
 };
 
 static uint16_t deepest_stack;
+static int64_t least_free_ram = INT64_MAX;
+static uint32_t write_line_faults;
 static bool covered[MAX_FLASH_BYTES];
 static bool expected[MAX_FLASH_BYTES];
 
@@ -94,6 +98,9 @@ board_lines_t board_lines(const board_t *board) {
 
 static void track_write_lines(board_t *board) {
     const board_lines_t lines = board_lines(board);
+    if (lines == LINES_DRIVEN_HIGH || lines == LINES_BOTH_LOW) {
+        write_line_faults++;
+    }
     if (lines != board->last_write_lines) {
         board->last_write_lines = lines;
         board->last_line_change_cycle = board->avr->cycle;
@@ -117,10 +124,26 @@ static void step(board_t *board) {
     if (board->started && depth > deepest_stack) {
         deepest_stack = depth;
     }
+    const int64_t free_ram = (int64_t)_avr_sp_get(avr) - (int64_t)board->static_data_end;
+    if (board->started && free_ram < least_free_ram) {
+        least_free_ram = free_ram;
+    }
     track_write_lines(board);
 }
 
-static avr_t *load_avr(const char *mcu, const char *elf_path, uint32_t frequency_hz) {
+static uint32_t static_data_end(const elf_firmware_t *firmware) {
+    uint32_t end = RAM_START;
+    for (uint32_t index = 0U; index < firmware->symbolcount; index++) {
+        const avr_symbol_t *symbol = firmware->symbol[index];
+        if (strcmp(symbol->symbol, "__data_end") == 0 || strcmp(symbol->symbol, "__bss_end") == 0) {
+            const uint32_t address = symbol->addr & DATA_ADDRESS_BITS;
+            end = address > end ? address : end;
+        }
+    }
+    return end;
+}
+
+static avr_t *load_avr(const char *mcu, const char *elf_path, uint32_t frequency_hz, uint32_t *data_end) {
     elf_firmware_t firmware;
     memset(&firmware, 0, sizeof firmware);
     if (elf_read_firmware(elf_path, &firmware) != 0) {
@@ -137,6 +160,7 @@ static avr_t *load_avr(const char *mcu, const char *elf_path, uint32_t frequency
     avr_init(avr);
     avr->log = LOG_ERROR;
     avr_load_firmware(avr, &firmware);
+    *data_end = static_data_end(&firmware);
     return avr;
 }
 
@@ -186,7 +210,8 @@ static void wire_inputs(board_t *board) {
 }
 
 board_t *board_open(const char *mcu, const char *elf_path, uint32_t frequency_hz) {
-    avr_t *avr = load_avr(mcu, elf_path, frequency_hz);
+    uint32_t data_end = RAM_START;
+    avr_t *avr = load_avr(mcu, elf_path, frequency_hz, &data_end);
     if (avr == NULL) {
         return NULL;
     }
@@ -197,6 +222,7 @@ board_t *board_open(const char *mcu, const char *elf_path, uint32_t frequency_hz
         return NULL;
     }
     board->avr = avr;
+    board->static_data_end = data_end;
     board->last_write_lines = LINES_RELEASED;
     wire_inputs(board);
     avr_register_io_write(avr, CLOCK_PRESCALER_ADDRESS, clock_prescaler_write, board);
@@ -289,8 +315,12 @@ uint16_t board_deepest_stack(void) {
     return deepest_stack;
 }
 
-uint16_t board_ram_bytes(const board_t *board) {
-    return (uint16_t)(board->avr->ramend + 1U - RAM_START);
+int64_t board_least_free_ram(void) {
+    return least_free_ram;
+}
+
+uint32_t board_write_line_faults(void) {
+    return write_line_faults;
 }
 
 bool coverage_load(const char *instruction_list_path) {

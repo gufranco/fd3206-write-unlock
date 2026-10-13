@@ -129,10 +129,11 @@ make size       firmware size
 make analyse    clang-format, ruff, mypy --strict, yamllint, style gate, layer check, REUSE, type widths, cppcheck with MISRA, README figures,
                 hex size and edge-handler cycle budget per chip, tool tests at 100 percent
 make test       host tests at 100 percent line and branch, then the simavr suite at 100 percent instructions
-                on each chip at three clocks, failing past 32 bytes of stack
+                on each chip at three clocks, failing past 32 bytes of stack, on a stack that reaches
+                static data, or on any instruction that leaves a write line driven high or both pulled low
 make misra      the MISRA C:2012 gate alone, also part of analyse
 make mutation   delete every assembly instruction, swap every skip, bit set and interrupt flag, zero every
-                loaded constant, flip every comparison and logical operator in the C sources, plus 10
+                loaded constant, flip every comparison and logical operator in the C sources, plus 11
                 hand-written breaks; each must fail the build or the tests, except the equivalent
                 mutants `tools/mutation.py` lists with their reasons; a run that generates none fails
 make reproducible  build twice at different paths; both images must match byte for byte
@@ -188,6 +189,7 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | New advisories against handlebars and braces, both pulled in by semantic-release, failed `pnpm audit` in every CI run on 2026-10-12 with nothing changed here, which also blocked every release | The firmware gates were all green | the `release-tooling` job; overrides and recorded audit exceptions live in `pnpm-workspace.yaml` |
 | CI and the release ran the Python tools on the runner's Python 3.12, below the 3.13 floor in `pyproject.toml`, while `.tool-versions` said 3.14 | Nothing in the tools needs 3.13 yet | both workflows install Python from `.tool-versions`, which matches the container |
 | `isr_check` passed an `rjmp` with no resolved target to `list.index`, which would crash with a bare `ValueError` instead of naming the instruction | Every real listing carries the target comment | `mypy --strict` flagged the `None`; the check now fails with the address of the jump, with a test |
+| A one-instruction glitch in the edge handler that pulled every port B pin low passed all 20 scenarios, because the census samples the write lines only between edges | The lines were right at every sample point | the harness classifies the write lines after every instruction and fails on any driven high or both low; a hand-written mutant keeps the check honest |
 | The README figures and this file gave 230 bytes of flash for both chips; the ATtiny4313 image is 234 | `doc_figures` measured only the default `MCU` and reported success | `doc_figures` takes both release ELFs and the figures table names each chip |
 | `sim_test` read its clock with an unchecked `strtoul`, so `8MHz` ran every scenario at 8 Hz and `0` printed an impossible gate response | The Makefile always passes plain numbers | `sim_test` rejects a clock that is not a whole number of hertz above 0 |
 
@@ -244,7 +246,7 @@ simavr runs headless and opens nothing. Any other emulator used for a check runs
 ## State (as of 2026-10-13)
 
 - Latest release v1.0.5: `fd3206-write-unlock-attiny2313a.hex` SHA-256 `53937f09bf5ad84a8cd3d4fd1159400f92c54a7e02aa64f102424d7111e9fc29`, `fd3206-write-unlock-attiny4313.hex` SHA-256 `72e293a25c19b02a693dfd483a4b4bec890c54f59caf9bdcff59a8b32eb13df3`. The ATtiny2313A image uses 230 bytes of flash and the ATtiny4313 image 234, the four extra bytes being its SPH start-up write.
-- Every gate is green in CI: 20 simavr scenarios on both chips at three clocks, all 74 mutants killed with two equivalent ones recorded, a reproducible build, host and tool tests at 100 percent coverage.
+- Every gate is green in CI: 20 simavr scenarios on both chips at three clocks, all 75 mutants killed with two equivalent ones recorded, a reproducible build, host and tool tests at 100 percent coverage.
 - The first drive session, in this order, each on a disk that can be lost:
   1. With the chip not installed and no disk: pins 14 and 15 idle at 5.5 V or less, and the powered 1 kOhm test gives 250 Ohm or more.
   2. With the chip not installed: pin 4 stays at 3.0 V or more through a whole FDSStick read, if an FDSStick will be used.

@@ -48,7 +48,8 @@ void board_inject_hang(board_t *board);
 void board_reset(board_t *board);
 void board_wait_startup(board_t *board);
 uint16_t board_deepest_stack(void);
-uint16_t board_ram_bytes(const board_t *board);
+int64_t board_least_free_ram(void);
+uint32_t board_write_line_faults(void);
 
 bool coverage_load(const char *instruction_list_path);
 uint32_t coverage_report_missing(void);

@@ -153,6 +153,13 @@ MUTANTS = (
         "    ret\n.Lcommit_set:",
     ),
     Mutant(
+        "edge handler pulls every port B pin low for one instruction",
+        "src/write_data_edge.S",
+        "    in rNext, _SFR_IO_ADDR(FDSWU_NEXT_EDGE_LINES)\n",
+        "    ser rNext\n    out _SFR_IO_ADDR(FDSWU_WRITE_LINE_DIRECTION), rNext\n"
+        "    in rNext, _SFR_IO_ADDR(FDSWU_NEXT_EDGE_LINES)\n",
+    ),
+    Mutant(
         "edge handler stops advancing the plan",
         "src/write_data_edge.S",
         "    out _SFR_IO_ADDR(FDSWU_NEXT_EDGE_LINES), rAfter\n",

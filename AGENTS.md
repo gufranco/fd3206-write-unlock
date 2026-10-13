@@ -187,6 +187,7 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | New advisories against handlebars and braces, both pulled in by semantic-release, failed `pnpm audit` in every CI run on 2026-10-12 with nothing changed here, which also blocked every release | The firmware gates were all green | the `release-tooling` job; overrides and recorded audit exceptions live in `pnpm-workspace.yaml` |
 | CI and the release ran the Python tools on the runner's Python 3.12, below the 3.13 floor in `pyproject.toml`, while `.tool-versions` said 3.14 | Nothing in the tools needs 3.13 yet | both workflows install Python from `.tool-versions`, which matches the container |
 | The README figures and this file gave 230 bytes of flash for both chips; the ATtiny4313 image is 234 | `doc_figures` measured only the default `MCU` and reported success | `doc_figures` takes both release ELFs and the figures table names each chip |
+| `sim_test` read its clock with an unchecked `strtoul`, so `8MHz` ran every scenario at 8 Hz and `0` printed an impossible gate response | The Makefile always passes plain numbers | `sim_test` rejects a clock that is not a whole number of hertz above 0 |
 
 ## Prior art
 

@@ -373,12 +373,23 @@ static const test_case_t TESTS[] = {
     TEST_CASE(write_lines_release_on_reset_mid_write_and_writing_resumes),
 };
 
+static uint32_t parse_clock_hz(const char *text) {
+    char *end = NULL;
+    const unsigned long value = strtoul(text, &end, 10);
+    const bool whole_number = end != text && *end == '\0' && text[0] != '-';
+    return whole_number && value > 0UL && value <= UINT32_MAX ? (uint32_t)value : 0U;
+}
+
 int main(int argc, char **argv) {
     if (argc != 5) {
         fprintf(stderr, "usage: %s <mcu> <firmware.elf> <instructions.insn> <clock-hz>\n", argv[0]);
         return EXIT_FAILURE;
     }
-    const uint32_t frequency_hz = (uint32_t)strtoul(argv[4], NULL, 10);
+    const uint32_t frequency_hz = parse_clock_hz(argv[4]);
+    if (frequency_hz == 0U) {
+        fprintf(stderr, "clock must be a whole number of hertz above 0: %s\n", argv[4]);
+        return EXIT_FAILURE;
+    }
     scenario_configure(argv[1], argv[2], frequency_hz);
     if (!coverage_load(argv[3])) {
         return EXIT_FAILURE;

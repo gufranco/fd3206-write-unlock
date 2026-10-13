@@ -11,6 +11,7 @@ from pathlib import Path
 from tools import commit_message
 
 ZERO_SHA = "0" * 40
+DEPENDABOT_EMAIL = "49699333+dependabot[bot]@users.noreply.github.com"
 
 
 def git(root: Path, *arguments: str) -> str:
@@ -22,15 +23,28 @@ def git(root: Path, *arguments: str) -> str:
     ).stdout.strip()
 
 
-def make_repository(messages: list[str]) -> tuple[Path, list[str]]:
+def make_repository(
+    messages: list[str], authors: dict[int, str] | None = None
+) -> tuple[Path, list[str]]:
     root = Path(tempfile.mkdtemp())
     git(root, "init", "-q")
     git(root, "config", "user.email", "tester@example.invalid")
     git(root, "config", "user.name", "Tester")
     git(root, "config", "commit.gpgsign", "false")
     shas = []
-    for message in messages:
-        git(root, "commit", "-q", "--allow-empty", "--no-verify", "-m", message)
+    for index, message in enumerate(messages):
+        author = (authors or {}).get(index)
+        override = [f"--author={author}"] if author else []
+        git(
+            root,
+            "commit",
+            "-q",
+            "--allow-empty",
+            "--no-verify",
+            *override,
+            "-m",
+            message,
+        )
         shas.append(git(root, "rev-parse", "HEAD"))
     return root, shas
 
@@ -41,12 +55,13 @@ class CheckTest(unittest.TestCase):
             "feat: add a thing",
             "fix(ci): repair the release",
             "refactor!: c17 with zero findings",
-            "ci(deps): bump the actions group across 1 directory with 2 updates",
+            "ci(deps): bump the actions group",
+            "feat: " + "a" * 44,
         ]
 
         problems = [commit_message.check(header) for header in headers]
 
-        self.assertEqual(problems, [[], [], [], []])
+        self.assertEqual(problems, [[], [], [], [], []])
 
     def test_git_generated_headers_pass(self) -> None:
         problems = commit_message.check("Merge pull request #1 from x/y\n\nbody")
@@ -57,7 +72,7 @@ class CheckTest(unittest.TestCase):
         problems = commit_message.check("feature: add a thing")
 
         self.assertEqual(len(problems), 1)
-        self.assertIn("type(scope): subject", problems[0])
+        self.assertIn("type(scope): lowercase subject", problems[0])
 
     def test_missing_space_after_colon_is_reported(self) -> None:
         problems = commit_message.check("feat(x):add")
@@ -65,9 +80,15 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(len(problems), 1)
 
     def test_long_header_is_reported(self) -> None:
-        problems = commit_message.check("feat: " + "a" * 100)
+        problems = commit_message.check("feat: " + "a" * 45)
 
-        self.assertIn("header is 106 characters, over 100", problems)
+        self.assertEqual(problems, ["header is 51 characters, over 50"])
+
+    def test_capitalised_subject_is_reported(self) -> None:
+        problems = commit_message.check("fix: Repair the gate")
+
+        self.assertEqual(len(problems), 1)
+        self.assertIn("lowercase subject", problems[0])
 
     def test_trailing_period_is_reported(self) -> None:
         problems = commit_message.check("docs: explain the pins.")
@@ -135,6 +156,30 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn(shas[1][:12], errors)
         self.assertNotIn(shas[2][:12], errors)
+
+    def test_range_skips_dependabot_and_release_commits(self) -> None:
+        long_subject = "build: bump the python-tools group across 1 directory"
+        root, shas = make_repository(
+            ["feat: first", long_subject, "chore(release): 1.0.6 [skip ci]"],
+            authors={
+                1: f"dependabot[bot] <{DEPENDABOT_EMAIL}>",
+                2: "semantic-release-bot <semantic-release-bot@martynus.net>",
+            },
+        )
+
+        code, errors = self.run_main("--range", f"{shas[0]}..{shas[2]}", cwd=root)
+
+        self.assertEqual((code, errors), (0, ""))
+
+    def test_range_still_checks_a_person_writing_a_long_subject(self) -> None:
+        root, shas = make_repository(
+            ["feat: first", "build: bump the python-tools group across 1 directory"]
+        )
+
+        code, errors = self.run_main("--range", f"{shas[0]}..{shas[1]}", cwd=root)
+
+        self.assertEqual(code, 1)
+        self.assertIn("over 50", errors)
 
     def test_range_from_zero_checks_the_head_commit(self) -> None:
         root, shas = make_repository(["bad message", "feat: fine"])

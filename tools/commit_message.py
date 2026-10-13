@@ -19,7 +19,9 @@ TYPES = (
     "chore",
     "revert",
 )
-HEADER = re.compile(rf"^(?:{'|'.join(TYPES)})(?:\([a-z0-9][a-z0-9._/-]*\))?!?: \S")
+HEADER = re.compile(
+    rf"^(?:{'|'.join(TYPES)})(?:\([a-z0-9][a-z0-9._/-]*\))?!?: [a-z0-9]"
+)
 GIT_GENERATED = re.compile(r'^(?:Merge |Revert ")')
 ZERO_SHA = re.compile(r"^0+$")
 SKIP_TOKEN = re.compile(
@@ -28,7 +30,8 @@ SKIP_TOKEN = re.compile(
 )
 RELEASE_HEADER = re.compile(r"^chore\(release\): \d+\.\d+\.\d+ \[skip ci\]$")
 SKIP_PROBLEM = "message asks GitHub to skip every workflow for this commit"
-MAX_HEADER = 100
+MAX_HEADER = 50
+BOT_AUTHORS = ("dependabot[bot]", "semantic-release-bot")
 USAGE_ERROR = 2
 ARGUMENT_COUNT = 3
 REPOSITORY: Path | None = None
@@ -53,7 +56,10 @@ def check(message: str) -> list[str]:
         return []
     problems = []
     if not HEADER.match(header):
-        problems = [f"'{header}' is not type(scope): subject, types {', '.join(TYPES)}"]
+        problems = [
+            f"'{header}' is not type(scope): lowercase subject, "
+            f"types {', '.join(TYPES)}"
+        ]
     if len(header) > MAX_HEADER:
         problems = [*problems, f"header is {len(header)} characters, over {MAX_HEADER}"]
     if header.endswith("."):
@@ -76,6 +82,11 @@ def commits_in(revision_range: str) -> list[str]:
     return git("rev-list", "--reverse", revision_range).split()
 
 
+def written_by_a_bot(sha: str) -> bool:
+    author = git("log", "-1", "--format=%ae", sha)
+    return any(bot in author for bot in BOT_AUTHORS)
+
+
 def report(label: str, problems: list[str]) -> list[str]:
     return [f"{label}: {problem}" for problem in problems]
 
@@ -88,6 +99,7 @@ def main(arguments: list[str]) -> int:
         errors = [
             error
             for sha in commits_in(arguments[2])
+            if not written_by_a_bot(sha)
             for error in report(sha[:12], check(git("log", "-1", "--format=%B", sha)))
         ]
     else:

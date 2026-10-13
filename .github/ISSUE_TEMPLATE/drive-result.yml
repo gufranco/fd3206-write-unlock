@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: MIT
 
 name: Drive result
-description: Report what happened on a real Famicom Disk System drive, so the project records results from real installs.
+description: Report what happened on a real Famicom Disk System drive.
 title: "[drive] <controller> <power board> <works|partial|fails>"
 labels: ["hardware"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for testing on a real drive. Use a disk you can lose, and take the measurements from install step 4 before soldering. Every field below maps to a check the README asks for.
+        Thanks for testing on a real drive. Use a disk you can lose, and take the measurements from install step 4 before soldering.
   - type: dropdown
     id: controller
     attributes:

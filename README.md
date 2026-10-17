@@ -2,14 +2,9 @@
 
 <h1>fd3206-write-unlock</h1>
 
-English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-HK.md)
-
-<br>
-
 <strong>Solder one ATtiny2313A on top of the FD3206P controller, and a Famicom Disk System drive writes whole disks again.</strong>
 
-<br>
-<br>
+English &nbsp;|&nbsp; [日本語](README.ja.md) &nbsp;|&nbsp; [简体中文](README.zh-CN.md) &nbsp;|&nbsp; [繁體中文](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)

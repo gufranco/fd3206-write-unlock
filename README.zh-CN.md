@@ -4,7 +4,7 @@
 
 <strong>在 FD3206P 控制器上方焊一颗 ATtiny2313A，Famicom 磁碟机的驱动器就能重新写入整张磁盘。</strong>
 
-[English](README.md) &nbsp;|&nbsp; [日本語](README.ja.md) &nbsp;|&nbsp; 简体中文 &nbsp;|&nbsp; [繁體中文](README.zh-HK.md)
+[English](README.md) | [日本語](README.ja.md) | 简体中文 | [繁體中文](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
@@ -15,10 +15,10 @@
 </div>
 
 <p align="center">
-  <a href="#安装">安装</a> &nbsp;|&nbsp;
-  <a href="#工作原理">工作原理</a> &nbsp;|&nbsp;
-  <a href="#两处锁定">电源板</a> &nbsp;|&nbsp;
-  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">发布版本</a> &nbsp;|&nbsp;
+  <a href="#安装">安装</a> |
+  <a href="#工作原理">工作原理</a> |
+  <a href="#两处锁定">电源板</a> |
+  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">发布版本</a> |
   <a href="#常见问题">常见问题</a>
 </p>
 

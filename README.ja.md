@@ -4,7 +4,7 @@
 
 <strong>FD3206P コントローラの上に ATtiny2313A を 1 個はんだ付けすれば、ディスクシステムのドライブが再びディスク全面を書き込めるようになります。</strong>
 
-[English](README.md) &nbsp;|&nbsp; 日本語 &nbsp;|&nbsp; [简体中文](README.zh-CN.md) &nbsp;|&nbsp; [繁體中文](README.zh-HK.md)
+[English](README.md) | 日本語 | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
@@ -15,10 +15,10 @@
 </div>
 
 <p align="center">
-  <a href="#取り付け">取り付け</a> &nbsp;|&nbsp;
-  <a href="#仕組み">仕組み</a> &nbsp;|&nbsp;
-  <a href="#二つの書き込み制限">電源基板</a> &nbsp;|&nbsp;
-  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">リリース</a> &nbsp;|&nbsp;
+  <a href="#取り付け">取り付け</a> |
+  <a href="#仕組み">仕組み</a> |
+  <a href="#二つの書き込み制限">電源基板</a> |
+  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">リリース</a> |
   <a href="#よくある質問">よくある質問</a>
 </p>
 

@@ -4,7 +4,7 @@
 
 <strong>Solder one ATtiny2313A on top of the FD3206P controller, and a Famicom Disk System drive writes whole disks again.</strong>
 
-English &nbsp;|&nbsp; [日本語](README.ja.md) &nbsp;|&nbsp; [简体中文](README.zh-CN.md) &nbsp;|&nbsp; [繁體中文](README.zh-HK.md)
+English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
@@ -15,10 +15,10 @@ English &nbsp;|&nbsp; [日本語](README.ja.md) &nbsp;|&nbsp; [简体中文](REA
 </div>
 
 <p align="center">
-  <a href="#install">Install</a> &nbsp;|&nbsp;
-  <a href="#how-it-works">How it works</a> &nbsp;|&nbsp;
-  <a href="#two-lockouts">Power board</a> &nbsp;|&nbsp;
-  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">Releases</a> &nbsp;|&nbsp;
+  <a href="#install">Install</a> |
+  <a href="#how-it-works">How it works</a> |
+  <a href="#two-lockouts">Power board</a> |
+  <a href="https://github.com/gufranco/fd3206-write-unlock/releases">Releases</a> |
   <a href="#faq">FAQ</a>
 </p>
 

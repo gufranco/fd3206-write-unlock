@@ -6,11 +6,11 @@
 
 English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-HK.md)
 
-[![CI](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/gufranco/fd3206-write-unlock/badge)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fd3206-write-unlock)
-[![MISRA C:2012](https://img.shields.io/badge/MISRA%20C%3A2012-0%20findings-brightgreen)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![ci](https://img.shields.io/github/actions/workflow/status/gufranco/fd3206-write-unlock/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock?style=flat-square&label=release)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
+[![coverage](https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
+[![openssf scorecard](https://img.shields.io/ossf-scorecard/github.com/gufranco/fd3206-write-unlock?style=flat-square&label=openssf%20scorecard)](https://scorecard.dev/viewer/?uri=github.com/gufranco/fd3206-write-unlock)
+[![license](https://img.shields.io/github/license/gufranco/fd3206-write-unlock?style=flat-square&label=license)](LICENSE)
 
 </div>
 

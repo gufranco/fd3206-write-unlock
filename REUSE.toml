@@ -12,6 +12,7 @@ path = [
     "package.json",
     "pnpm-lock.yaml",
     ".releaserc.json",
+    "renovate.json",
     ".tool-versions",
     "CHANGELOG.md",
 ]

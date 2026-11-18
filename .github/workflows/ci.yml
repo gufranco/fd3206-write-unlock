@@ -79,6 +79,43 @@ jobs:
             build/attiny4313/release/fd3206-write-unlock-attiny4313.hex
           if-no-files-found: error
 
+  provenance:
+    needs: build-and-test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      attestations: write
+      id-token: write
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a  # v2.22.4
+        with:
+          egress-policy: audit
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: fd3206-write-unlock-hex
+          path: images
+
+      - name: Attest the build provenance of the images this run built
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+        with:
+          subject-path: images/*/release/*.hex
+
+      - name: Stage the provenance bundle
+        env:
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          mkdir -p provenance
+          cp -f "$BUNDLE" provenance/fd3206-write-unlock.sigstore.json
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: fd3206-write-unlock-provenance
+          path: provenance/fd3206-write-unlock.sigstore.json
+          if-no-files-found: error
+
   release-tooling:
     runs-on: ubuntu-26.04
     timeout-minutes: 10

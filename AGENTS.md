@@ -225,6 +225,16 @@ Facts about the neighbouring designs, each with its source, so nobody re-derives
 | risk | A crashed release run on a malicious pattern committed to `.releaserc.json`, which already requires write access to `main` |
 | revisit | When braces publishes a fix, or `pnpm audit` reports the advisory withdrawn; remove the entry then |
 
+| Field | Value |
+|---|---|
+| rule | `pnpm audit --audit-level high` passes with no exception, in the `ci` and `release` workflows |
+| scope | GHSA-fc5q-39xc-vjpf, picomatch 2.3.2 and 4.0.7, reached only through the semantic-release tooling; `pnpm-workspace.yaml` |
+| approved_by | Gustavo Franco, 2026-11-18 |
+| rationale | No picomatch release fixes it. The flaw is a regular-expression slowdown on repeated extglob patterns, and the release tooling only matches patterns written in `.releaserc.json`, so nobody outside this repository can feed it one. Nothing from it ships in the firmware |
+| alternatives | Lowering the audit level to critical, which would hide every future high finding; replacing semantic-release, which removes the signed release flow |
+| risk | A slow or stalled release run on a malicious pattern committed to `.releaserc.json`, which already requires write access to `main` |
+| revisit | When picomatch publishes a fix, or `pnpm audit` reports the advisory withdrawn; remove the entry then |
+
 ## Real hardware
 
 Nothing in this repository can drive a drive or a programmer, so a hardware result exists only when someone reports one. Ask before assuming a hardware run happened.

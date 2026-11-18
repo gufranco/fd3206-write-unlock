@@ -265,7 +265,7 @@ Each requirement is checked by a simulation scenario that runs the release image
 | The write lines MUST be released within 10 us of any condition going high | each condition in turn, no further edges: both released within 10 us |
 | Exactly one write line MUST be driven within 10 us of all conditions becoming low | /WRITE GATE falls with the others low: one line low within 10 us |
 | The write lines MUST end released after a write gate glitch | 250 ns gate pulse: both released afterwards |
-| After start-up no pin SHALL be an output, every input SHALL have its pull-up and no write-line pin SHALL | all inputs high: every direction register zero, pull-ups on the four inputs, none on the write lines |
+| After start-up no pin SHALL be an output, every input SHALL have its pull-up and no write-line pin SHALL | all inputs high: every direction register zero, a pull-up on every pin except the write lines |
 | The write lines MUST be released within 100 us of /WRITE GATE going high while data edges arrive at the fastest rate | fastest data, gate closes: released within 100 us and for the next 100 edges |
 | Exactly one write line MUST be driven within 100 us of /WRITE GATE going low while data edges arrive at the fastest rate | fastest data, gate opens: one line low within 100 us, alternating on every edge after |
 | The firmware MUST run undivided from its clock and keep the watchdog armed | a chip that starts divided by 8, after start-up: prescaler 1, watchdog enabled with its 60 ms timeout |

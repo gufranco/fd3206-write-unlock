@@ -213,6 +213,9 @@ static bool startup_drives_no_pin_and_pulls_up_every_input(void) {
     CHECK((latch_b & READY_PIN_BIT_B) == READY_PIN_BIT_B);
     CHECK((latch_d & WRITE_DATA_PIN_BIT_D) == WRITE_DATA_PIN_BIT_D);
     CHECK((latch_b & WRITE_LINE_PIN_BITS_B) == 0);
+    CHECK(latch_a == PULLUP_BITS_A);
+    CHECK(latch_b == PULLUP_BITS_B);
+    CHECK(latch_d == PULLUP_BITS_D);
     return true;
 }
 
@@ -413,7 +416,8 @@ int main(int argc, char **argv) {
     const int64_t free_ram = board_least_free_ram();
     printf("least RAM between the stack and static data: %" PRId64 " bytes\n", free_ram);
     const uint32_t line_faults = board_write_line_faults();
-    printf("instructions with a write line driven high or both pulled low: %" PRIu32 "\n", line_faults);
+    printf("instructions with a write line driven high, both pulled low or another pin driven: %" PRIu32 "\n",
+           line_faults);
     const bool stack_fits = stack <= STACK_LIMIT_BYTES && free_ram >= 0;
     const bool lines_valid = line_faults == 0U;
     return failures == 0 && missing == 0 && stack_fits && lines_valid ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -130,10 +130,10 @@ make analyse    clang-format, ruff, mypy --strict, yamllint, style gate, layer c
                 hex size and edge-handler cycle budget per chip, tool tests at 100 percent
 make test       host tests at 100 percent line and branch, then the simavr suite at 100 percent instructions
                 on each chip at three clocks, failing past 32 bytes of stack, on a stack that reaches
-                static data, or on any instruction that leaves a write line driven high or both pulled low
+                static data, or on any instruction that leaves a write line driven high, both pulled low or another port B pin driven
 make misra      the MISRA C:2012 gate alone, also part of analyse
 make mutation   delete every assembly instruction, swap every skip, bit set and interrupt flag, zero every
-                loaded constant, flip every comparison and logical operator in the C sources, plus 11
+                loaded constant, flip every comparison and logical operator in the C sources, plus 14
                 hand-written breaks; each must fail the build or the tests, except the equivalent
                 mutants `tools/mutation.py` lists with their reasons; a run that generates none fails
 make reproducible  build twice at different paths; both images must match byte for byte

@@ -111,6 +111,25 @@ MUTANTS = (
         "((uint8_t)0x7BU)",
     ),
     Mutant(
+        "clipped port B pins lose their pull-ups",
+        "include/fdswu/pins.h",
+        "((uint8_t)0xF3U)",
+        "((uint8_t)0x02U)",
+    ),
+    Mutant(
+        "clipped port D pins lose their pull-ups",
+        "include/fdswu/pins.h",
+        "((uint8_t)0x7FU)",
+        "((uint8_t)0x04U)",
+    ),
+    Mutant(
+        "edge handler drives a clipped port B pin",
+        "src/write_data_edge.S",
+        "    out _SFR_IO_ADDR(FDSWU_WRITE_LINE_DIRECTION), rNext\n",
+        "    sbr rNext, 0x01\n"
+        "    out _SFR_IO_ADDR(FDSWU_WRITE_LINE_DIRECTION), rNext\n",
+    ),
+    Mutant(
         "write line latch set, so an enabled line drives high",
         "src/port.S",
         "    out _SFR_IO_ADDR(PORTB), rSecond\n",

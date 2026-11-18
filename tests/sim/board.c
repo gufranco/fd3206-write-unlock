@@ -30,7 +30,8 @@ enum {
     HANG_OPCODE_HIGH = 0xCF,
     WATCHDOG_CONTROL_ADDRESS = 0x41,
     LINE1_BIT = 3,
-    LINE2_BIT = 2
+    LINE2_BIT = 2,
+    OTHER_PIN_BITS_B = 0xF3
 };
 
 typedef struct {
@@ -98,7 +99,8 @@ board_lines_t board_lines(const board_t *board) {
 
 static void track_write_lines(board_t *board) {
     const board_lines_t lines = board_lines(board);
-    if (lines == LINES_DRIVEN_HIGH || lines == LINES_BOTH_LOW) {
+    const bool drives_another_pin = (board_port_directions(board, 'B') & OTHER_PIN_BITS_B) != 0;
+    if (lines == LINES_DRIVEN_HIGH || lines == LINES_BOTH_LOW || drives_another_pin) {
         write_line_faults++;
     }
     if (lines != board->last_write_lines) {
@@ -330,12 +332,18 @@ bool coverage_load(const char *instruction_list_path) {
         return false;
     }
     unsigned address = 0;
+    uint32_t listed = 0;
     while (fscanf(file, "%u %*s", &address) == 1) {
         if (address < MAX_FLASH_BYTES) {
             expected[address] = true;
+            listed++;
         }
     }
     fclose(file);
+    if (listed == 0) {
+        fprintf(stderr, "%s lists no instruction, so coverage would mean nothing\n", instruction_list_path);
+        return false;
+    }
     return true;
 }
 

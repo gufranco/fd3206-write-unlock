@@ -32,7 +32,10 @@ enum {
     WRITE_LINE_PIN_BITS_B = 0x0C,
     READY_PIN_BIT_B = 0x02,
     CONDITION_PIN_BITS_A = 0x03,
-    WRITE_DATA_PIN_BIT_D = 0x04
+    WRITE_DATA_PIN_BIT_D = 0x04,
+    PULLUP_BITS_A = 0x03,
+    PULLUP_BITS_B = 0xF3,
+    PULLUP_BITS_D = 0x7F
 };
 
 typedef struct {

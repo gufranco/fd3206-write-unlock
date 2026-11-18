@@ -31,6 +31,15 @@
       ],
       "enabled": true,
       "semanticCommitType": "ci"
+    },
+    {
+      "matchManagers": [
+        "asdf"
+      ],
+      "matchPackageNames": [
+        "python"
+      ],
+      "allowedVersions": "<3.14"
     }
   ]
 }

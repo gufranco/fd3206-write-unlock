@@ -45,9 +45,9 @@ ENGLISH = Labels(
     handler="| Edge handler | {} instructions |",
     source="| Firmware source | {} non-blank lines |",
     inline=(
-        ("flash_bytes", "<b>{}</b> bytes of flash"),
-        ("handler_instructions", "<b>{}</b>-instruction edge handler"),
-        ("scenarios", "<b>{}</b> simulation scenarios"),
+        ("flash_bytes", "uses {} bytes of flash"),
+        ("handler_instructions", "{}-instruction edge handler"),
+        ("scenarios", "{} simulation scenarios check"),
         ("scenarios", "{} simavr scenarios run"),
     ),
 )
@@ -57,9 +57,9 @@ JAPANESE = Labels(
     handler="| エッジ割り込みハンドラ | {} 命令 |",
     source="| ファームウェアのソース | 空行を除き {} 行 |",
     inline=(
-        ("flash_bytes", "フラッシュ <b>{}</b> バイト"),
-        ("handler_instructions", "<b>{}</b> 命令のエッジ割り込み"),
-        ("scenarios", "シミュレーション <b>{}</b> シナリオ"),
+        ("flash_bytes", "フラッシュの使用量は {} バイト"),
+        ("handler_instructions", "{} 命令のエッジ割り込み"),
+        ("scenarios", "{} のシミュレーションシナリオ"),
         ("scenarios", "{} の simavr シナリオ"),
     ),
 )
@@ -72,9 +72,9 @@ SIMPLIFIED_CHINESE = Labels(
     handler="| 边沿中断处理程序 | {} 条指令 |",
     source="| 固件源代码 | 非空行 {} 行 |",
     inline=(
-        ("flash_bytes", "<b>{}</b> 字节闪存"),
-        ("handler_instructions", "<b>{}</b> 条指令的边沿中断"),
-        ("scenarios", "<b>{}</b> 个仿真场景"),
+        ("flash_bytes", "占用 {} 字节闪存"),
+        ("handler_instructions", "{} 条指令的边沿中断"),
+        ("scenarios", "{} 个仿真场景检查"),
         ("scenarios", "{} 个 simavr 场景"),
     ),
 )
@@ -87,16 +87,16 @@ HONG_KONG_CHINESE = Labels(
     handler="| 邊緣中斷處理程式 | {} 條指令 |",
     source="| 韌體原始碼 | 非空行 {} 行 |",
     inline=(
-        ("flash_bytes", "<b>{}</b> 位元組快閃記憶體"),
-        ("handler_instructions", "<b>{}</b> 條指令的邊緣中斷"),
-        ("scenarios", "<b>{}</b> 個模擬場景"),
+        ("flash_bytes", "佔用 {} 位元組快閃記憶體"),
+        ("handler_instructions", "{} 條指令的邊緣中斷"),
+        ("scenarios", "{} 個模擬場景檢查"),
         ("scenarios", "{} 個 simavr 場景"),
     ),
 )
 READMES = {
     "README.md": ENGLISH,
     "README.ja.md": JAPANESE,
-    "README.zh-CN.md": SIMPLIFIED_CHINESE,
+    "README.zh-Hans.md": SIMPLIFIED_CHINESE,
     "README.zh-HK.md": HONG_KONG_CHINESE,
 }
 

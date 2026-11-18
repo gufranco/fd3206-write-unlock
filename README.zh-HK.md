@@ -4,7 +4,7 @@
 
 <strong>在 FD3206P 控制器上方焊一粒 ATtiny2313A，Famicom 磁碟機的驅動器便可以再次寫入整張磁碟。</strong>
 
-[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | 繁體中文
+[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | 繁體中文 (香港)
 
 [![ci](https://img.shields.io/github/actions/workflow/status/gufranco/fd3206-write-unlock/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock?style=flat-square&label=release)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
@@ -22,11 +22,26 @@
   <a href="#常見問題">常見問題</a>
 </p>
 
-<p align="center">
-<b>8</b> 個焊點 · <b>0</b> 處切線 · <b>0</b> 件額外元件 · <b>230</b> 位元組快閃記憶體 · <b>15</b> 條指令的邊緣中斷 · <b>0</b> 項 MISRA C:2012 問題 · <b>20</b> 個模擬場景
-</p>
-
 ---
+
+1988 年底起生產的 Famicom 磁碟機驅動器以三美 FD3206P 控制器取代 FD7201P。FD3206P 仍容許 RAM 轉接器改寫單一檔案，但寫入一旦覆蓋整張磁碟，便會放開磁頭的兩條寫入線，RAM 轉接器隨即顯示錯誤 26。這類驅動器無法備份或還原整張磁碟。
+
+本韌體就是經典 74LS76 與 74LS45 改裝中的那個寫入級，在一粒以 8 個焊點疊焊於控制器上的晶片裏運行，不切線，亦不加任何元件。它佔用 230 位元組快閃記憶體，20 個模擬場景檢查每款晶片的正式版映像。
+
+> [!IMPORTANT]
+> 已在真實的 FD3206P 驅動器上分別測試 ATtiny2313A 和 ATtiny4313：整碟寫入和遊戲存檔都能正確讀回。寫入任何磁碟之前請先備份。
+
+## 用法
+
+核對發佈版本中的映像，再用 USBasp 寫入晶片：
+
+```sh
+sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
+make fuses PROGRAMMER=usbasp
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
+```
+
+按安裝一節第 4 步量度驅動器，通過之後才把晶片焊在 FD3206P 上：
 
 ```text
 ATtiny2313A, pin 1 over FD3206P pin 1
@@ -34,59 +49,11 @@ ATtiny2313A, pin 1 over FD3206P pin 1
   clip    1 2 3 7 8 9 11 12 16 17 18 19
 ```
 
-> [!IMPORTANT]
-> 已在真實的 FD3206P 驅動器上分別測試 ATtiny2313A 和 ATtiny4313：整碟寫入和遊戲存檔都能正確讀回。寫入任何磁碟之前請先備份。
+[安裝](#安裝)一節列出全部步驟，第一步是檢查電源板，它可能帶有第二處鎖定。
 
-<table>
-<tr>
-<td width="50%" valign="top">
+## 與其他方案的比較
 
-**不切線，不加料**<br>
-8 支針腳焊在下方的 FD3206P 上。不切斷銅箔，不加電線、電阻或第二粒晶片。
-
-</td>
-<td width="50%" valign="top">
-
-**只拉低，從不驅動為高**<br>
-每支寫入線針腳要麼輸出 0，要麼是輸入，因此不會與共用該針腳的 FD3206P 互相對衝。
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-**由邊緣到磁頭 10 個週期**<br>
-組合語言中斷在 WRITE DATA 每個下降緣後 1.25 us 切換寫入線；最接近的兩個邊緣相隔 4.7 us。
-
-</td>
-<td width="50%" valign="top">
-
-**MISRA C:2012，零問題**<br>
-C17 程式碼在除錯及正式兩種配置下都經過檢查，所有暫存器存取都集中在一個組合語言模組中。
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-**每條指令都被執行**<br>
-20 個 simavr 場景以三種時鐘速度運行每款晶片的正式版映像，只要有一條指令從未執行便判為失敗。
-
-</td>
-<td width="50%" valign="top">
-
-**燒錄的就是測試過的映像**<br>
-每個發佈版本都附有 CI 建置並模擬過的同一個 hex，連同其 SHA-256 及已簽署的建置證明。
-
-</td>
-</tr>
-</table>
-
-## 問題
-
-1988 年底起生產的 Famicom 磁碟機驅動器以三美 FD3206P 控制器取代 FD7201P。FD3206P 仍容許 RAM 轉接器改寫單一檔案，但寫入一旦覆蓋整張磁碟，便會放開磁頭的兩條寫入線，RAM 轉接器隨即顯示錯誤 26。這類驅動器無法備份或還原整張磁碟。
-
-經典做法是切斷兩條銅箔，再用一粒 74LS76 正反器和一粒 74LS45 驅動器重建驅動器的寫入級。本韌體就是同一個寫入級，在疊焊於控制器上的晶片裏運行。
+經典做法是切斷兩條銅箔，再用一粒 74LS76 正反器和一粒 74LS45 驅動器重建驅動器的寫入級。
 
 | | 本韌體 | GAL16V8 改裝晶片 | 經典接線改裝 |
 |:--|:--:|:--:|:--:|
@@ -121,14 +88,23 @@ graph LR
 | 項目 | 數值 | 依據 |
 |:--|:--|:--|
 | 由回應中斷至寫入線切換 | 10 個週期，1.25 us | 指令數 |
-| 整個處理程式 | 約 30 個週期，3.75 us，低於 4.7 us 的邊緣間隔 | 指令數 |
+| 整個處理程式 | 最差 32 個週期，4.0 us，低於 4.7 us 的邊緣間隔 | 指令數 |
 | 各邊緣之間的差異 | 最多 3 個週期，375 ns | AVR 中斷回應，主迴圈中最長的指令是 `ret` |
 | 由閘控改變至寫入線釋放或接通 | 最差 7.4 us，7.2 MHz 時 8.2 us；上限 10 us | 在主迴圈 64 個相位上模擬 |
-| 同上，期間資料邊緣以最快速率到達 | 最差 19 us，7.2 MHz 時 23 us；上限 100 us | 模擬 |
+| 同上，期間資料邊緣以最快速率到達 | 最差 19 us，7.2 MHz 時 28 us；上限 100 us | 模擬 |
 | 條件改變時停用中斷的時間 | 12 個週期，1.5 us | 指令數 |
 | 內部振盪器容差 | 所有場景在 7.2、8.0 及 8.8 MHz 下均通過 | 以 +/-10% 模擬 |
 
 驅動器以 96.4 kHz 寫入，每個位元 10.4 us，因此 375 ns 的差異只是一個位元的 3.6%。閘控改變發生在區塊之間至少 480 位元的間隙內，數微秒的延遲只會令間隙稍短或稍長。
+
+## 驗證方式
+
+| 檢查 | 內容 |
+|:--|:--|
+| MISRA C:2012 | C17 程式碼在除錯及正式兩種配置下都經過檢查，零問題；所有暫存器存取都集中在一個組合語言模組中 |
+| 模擬 | 20 個 simavr 場景以三種時鐘速度運行每款晶片的正式版映像，只要有一條指令從未執行便判為失敗 |
+| 時序 | 每次建置都把 15 條指令的邊緣中斷與 33 個週期的上限核對，並把關閉中斷的時段與 12 個週期的上限核對 |
+| 發佈 | 每個發佈版本都附有 CI 建置並模擬過的同一個 hex，連同其 SHA-256 及已簽署的建置證明 |
 
 ## 兩處鎖定
 
@@ -222,13 +198,7 @@ nesdev 論壇上的報告 `(as of 2026-09)`：
 
 ### 第 3 步：燒錄晶片
 
-每個[發佈版本](https://github.com/gufranco/fd3206-write-unlock/releases)都為每款晶片附有一個映像，即 `fd3206-write-unlock-attiny2313a.hex` 及 `fd3206-write-unlock-attiny4313.hex`，各附一個 `.sha256` 檔案。使用 USBasp 時：
-
-```sh
-sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
-make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
-```
+每個[發佈版本](https://github.com/gufranco/fd3206-write-unlock/releases)都為每款晶片附有一個映像，即 `fd3206-write-unlock-attiny2313a.hex` 及 `fd3206-write-unlock-attiny4313.hex`，各附一個 `.sha256` 檔案。使用 USBasp 時，執行[用法](#用法)一節的三條指令。
 
 | 情況 | 改動 |
 |:--|:--|

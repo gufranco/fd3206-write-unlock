@@ -174,7 +174,7 @@ class BlockTest(unittest.TestCase):
         names = sorted(doc_figures.READMES)
 
         self.assertEqual(
-            names, ["README.ja.md", "README.md", "README.zh-CN.md", "README.zh-HK.md"]
+            names, ["README.ja.md", "README.md", "README.zh-HK.md", "README.zh-Hans.md"]
         )
 
 
@@ -244,7 +244,7 @@ class MainTest(unittest.TestCase):
         self.assertIn(
             "| Flash used | 320 bytes on the ATtiny2313A, 324 on the ATtiny4313 |", text
         )
-        self.assertIn("<b>320</b> bytes of flash", text)
+        self.assertIn("uses 320 bytes of flash", text)
 
     def test_update_rewrites_the_inline_figures(self) -> None:
         root = make_root()
@@ -252,21 +252,21 @@ class MainTest(unittest.TestCase):
         self.run_main(root, "--update")
 
         text = (root / "README.md").read_text()
-        self.assertIn("<b>320</b> bytes of flash", text)
-        self.assertIn("<b>3</b>-instruction edge handler", text)
-        self.assertIn("<b>2</b> simulation scenarios", text)
+        self.assertIn("uses 320 bytes of flash", text)
+        self.assertIn("3-instruction edge handler", text)
+        self.assertIn("2 simulation scenarios check", text)
         self.assertIn("2 simavr scenarios run", text)
 
     def test_stale_inline_figure_alone_fails_the_check(self) -> None:
         root = make_root()
         self.run_main(root, "--update")
-        readme = root / "README.zh-CN.md"
-        readme.write_text(readme.read_text().replace("<b>320</b>", "<b>238</b>"))
+        readme = root / "README.zh-Hans.md"
+        readme.write_text(readme.read_text().replace("占用 320", "占用 238"))
 
         code, errors = self.run_main(root)
 
         self.assertEqual(code, 1)
-        self.assertIn("README.zh-CN.md: figures are stale", errors)
+        self.assertIn("README.zh-Hans.md: figures are stale", errors)
 
     def test_missing_inline_text_fails(self) -> None:
         root = make_root()

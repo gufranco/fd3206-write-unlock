@@ -4,7 +4,7 @@
 
 <strong>在 FD3206P 控制器上方焊一颗 ATtiny2313A，Famicom 磁碟机的驱动器就能重新写入整张磁盘。</strong>
 
-[English](README.md) | [日本語](README.ja.md) | 简体中文 | [繁體中文](README.zh-HK.md)
+[English](README.md) | [日本語](README.ja.md) | 简体中文 | [繁體中文 (香港)](README.zh-HK.md)
 
 [![ci](https://img.shields.io/github/actions/workflow/status/gufranco/fd3206-write-unlock/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock?style=flat-square&label=release)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
@@ -22,11 +22,26 @@
   <a href="#常见问题">常见问题</a>
 </p>
 
-<p align="center">
-<b>8</b> 个焊点 · <b>0</b> 处切线 · <b>0</b> 个额外元件 · <b>230</b> 字节闪存 · <b>15</b> 条指令的边沿中断 · <b>0</b> 项 MISRA C:2012 问题 · <b>20</b> 个仿真场景
-</p>
-
 ---
+
+1988 年末以后生产的 Famicom 磁碟机驱动器用三美 FD3206P 控制器取代了 FD7201P。FD3206P 仍允许 RAM 适配器改写单个文件，但写入一旦覆盖整张磁盘，它就会放开磁头的两条写入线，RAM 适配器随即显示错误 26。这样的驱动器无法备份或恢复整张磁盘。
+
+本固件就是经典 74LS76 与 74LS45 改造中的那个写入级，运行在一颗以 8 个焊点叠焊于控制器之上的芯片里，不切线，也不加任何元件。它占用 230 字节闪存，20 个仿真场景检查每种芯片的正式版映像。
+
+> [!IMPORTANT]
+> 已在真实的 FD3206P 驱动器上分别测试 ATtiny2313A 和 ATtiny4313：整盘写入和游戏存档都能正确读回。写入任何磁盘之前请先备份。
+
+## 用法
+
+校验发布版本中的映像，再用 USBasp 写入芯片：
+
+```sh
+sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
+make fuses PROGRAMMER=usbasp
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
+```
+
+按安装一节第 4 步测量驱动器，通过之后才把芯片焊在 FD3206P 上：
 
 ```text
 ATtiny2313A, pin 1 over FD3206P pin 1
@@ -34,59 +49,11 @@ ATtiny2313A, pin 1 over FD3206P pin 1
   clip    1 2 3 7 8 9 11 12 16 17 18 19
 ```
 
-> [!IMPORTANT]
-> 已在真实的 FD3206P 驱动器上分别测试 ATtiny2313A 和 ATtiny4313：整盘写入和游戏存档都能正确读回。写入任何磁盘之前请先备份。
+[安装](#安装)一节列出全部步骤，第一步是检查电源板，它可能带有第二处锁定。
 
-<table>
-<tr>
-<td width="50%" valign="top">
+## 与其他方案的比较
 
-**不切线，不加件**<br>
-8 个引脚焊在下方的 FD3206P 上。不切断任何线路，不加导线、电阻或第二颗芯片。
-
-</td>
-<td width="50%" valign="top">
-
-**只拉低，不驱动为高**<br>
-每个写入线引脚要么输出 0，要么为输入，因此不会与共用该引脚的 FD3206P 对冲。
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-**从边沿到磁头 10 个周期**<br>
-汇编中断在 WRITE DATA 每个下降沿后 1.25 us 切换写入线；最近的两个边沿相隔 4.7 us。
-
-</td>
-<td width="50%" valign="top">
-
-**MISRA C:2012 零问题**<br>
-C17 代码在调试和正式两种配置下检查，所有寄存器访问都集中在一个汇编模块中。
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-**每条指令都被执行**<br>
-20 个 simavr 场景以三种时钟频率运行每种芯片的正式版映像，只要有一条指令从未执行就判为失败。
-
-</td>
-<td width="50%" valign="top">
-
-**烧录的就是测试过的映像**<br>
-每个发布版本都附有 CI 构建并仿真过的同一个 hex，以及它的 SHA-256 和签名的构建证明。
-
-</td>
-</tr>
-</table>
-
-## 问题
-
-1988 年末以后生产的 Famicom 磁碟机驱动器用三美 FD3206P 控制器取代了 FD7201P。FD3206P 仍允许 RAM 适配器改写单个文件，但写入一旦覆盖整张磁盘，它就会放开磁头的两条写入线，RAM 适配器随即显示错误 26。这样的驱动器无法备份或恢复整张磁盘。
-
-经典做法是切断两条铜箔，用 74LS76 触发器和 74LS45 驱动器重建驱动器的写入级。本固件就是同一个写入级，运行在叠焊于控制器之上的芯片里。
+经典做法是切断两条铜箔，用 74LS76 触发器和 74LS45 驱动器重建驱动器的写入级。
 
 | | 本固件 | GAL16V8 改造芯片 | 经典接线改造 |
 |:--|:--:|:--:|:--:|
@@ -121,14 +88,23 @@ graph LR
 | 项目 | 数值 | 依据 |
 |:--|:--|:--|
 | 从响应中断到切换写入线 | 10 个周期，1.25 us | 指令计数 |
-| 整个处理程序 | 约 30 个周期，3.75 us，低于 4.7 us 的边沿间隔 | 指令计数 |
+| 整个处理程序 | 最坏 32 个周期，4.0 us，低于 4.7 us 的边沿间隔 | 指令计数 |
 | 各边沿之间的抖动 | 最多 3 个周期，375 ns | AVR 中断响应，主循环中最长的指令是 `ret` |
 | 从门控变化到写入线释放或接通 | 最坏 7.4 us，7.2 MHz 时 8.2 us；上限 10 us | 在主循环的 64 个相位上仿真 |
-| 同上，数据边沿以最快速率到达 | 最坏 19 us，7.2 MHz 时 23 us；上限 100 us | 仿真 |
+| 同上，数据边沿以最快速率到达 | 最坏 19 us，7.2 MHz 时 28 us；上限 100 us | 仿真 |
 | 条件变化时关闭中断的时间 | 12 个周期，1.5 us | 指令计数 |
 | 内部振荡器容差 | 所有场景在 7.2、8.0 和 8.8 MHz 下均通过 | 以 ±10% 的频率仿真 |
 
 驱动器以 96.4 kHz 写入，每位 10.4 us，因此 375 ns 的抖动是一位的 3.6%。门控变化发生在块与块之间至少 480 位的间隙内，几微秒的延迟只会让间隙略短或略长。
+
+## 验证方式
+
+| 检查 | 内容 |
+|:--|:--|
+| MISRA C:2012 | C17 代码在调试和正式两种配置下检查，零问题；所有寄存器访问都集中在一个汇编模块中 |
+| 仿真 | 20 个 simavr 场景以三种时钟频率运行每种芯片的正式版映像，只要有一条指令从未执行就判为失败 |
+| 时序 | 每次构建都把 15 条指令的边沿中断与 33 个周期的上限核对，并把关中断窗口与 12 个周期的上限核对 |
+| 发布 | 每个发布版本都附有 CI 构建并仿真过的同一个 hex，以及它的 SHA-256 和签名的构建证明 |
 
 ## 两处锁定
 
@@ -222,13 +198,7 @@ nesdev 论坛上的报告 `(as of 2026-09)`：
 
 ### 第 3 步：烧录芯片
 
-每个[发布版本](https://github.com/gufranco/fd3206-write-unlock/releases)都为每种芯片附有一个映像，即 `fd3206-write-unlock-attiny2313a.hex` 和 `fd3206-write-unlock-attiny4313.hex`，各附一个 `.sha256` 文件。使用 USBasp 时：
-
-```sh
-sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
-make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
-```
+每个[发布版本](https://github.com/gufranco/fd3206-write-unlock/releases)都为每种芯片附有一个映像，即 `fd3206-write-unlock-attiny2313a.hex` 和 `fd3206-write-unlock-attiny4313.hex`，各附一个 `.sha256` 文件。使用 USBasp 时，运行[用法](#用法)一节的三条命令。
 
 | 情况 | 改动 |
 |:--|:--|

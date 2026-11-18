@@ -4,7 +4,7 @@ version = 1
 path = [
     "README.md",
     "README.ja.md",
-    "README.zh-CN.md",
+    "README.zh-Hans.md",
     "README.zh-HK.md",
     "SECURITY.md",
     "AGENTS.md",

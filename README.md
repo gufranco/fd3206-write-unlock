@@ -4,7 +4,7 @@
 
 <strong>Solder one ATtiny2313A on top of the FD3206P controller, and a Famicom Disk System drive writes whole disks again.</strong>
 
-English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-HK.md)
+English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁體中文 (香港)](README.zh-HK.md)
 
 [![ci](https://img.shields.io/github/actions/workflow/status/gufranco/fd3206-write-unlock/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/gufranco/fd3206-write-unlock/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/gufranco/fd3206-write-unlock?style=flat-square&label=release)](https://github.com/gufranco/fd3206-write-unlock/releases/latest)
@@ -22,11 +22,26 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [繁體�
   <a href="#faq">FAQ</a>
 </p>
 
-<p align="center">
-<b>8</b> solder points · <b>0</b> trace cuts · <b>0</b> extra parts · <b>230</b> bytes of flash · <b>15</b>-instruction edge handler · <b>0</b> MISRA C:2012 findings · <b>20</b> simulation scenarios
-</p>
-
 ---
+
+Famicom Disk System drives made from late 1988 carry the Mitsumi FD3206P controller instead of the FD7201P. The FD3206P still lets the RAM adapter rewrite one file, but it lets go of the head's two write lines as soon as a write covers the whole disk, and the RAM adapter shows error 26. Such a drive cannot back up or restore a full disk.
+
+This firmware is the write stage of the classic 74LS76 and 74LS45 mod, running in one chip soldered to the controller at 8 points, with no trace cut and no added part. It uses 230 bytes of flash, and 20 simulation scenarios check each chip's release image.
+
+> [!IMPORTANT]
+> Tested on real FD3206P drives with both the ATtiny2313A and the ATtiny4313: whole-disk writes and game saves read back correctly. Back up any disk before writing to it.
+
+## Usage
+
+Check a release image and write it to the chip with a USBasp:
+
+```sh
+sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
+make fuses PROGRAMMER=usbasp
+avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
+```
+
+Measure the drive as step 4 of Install describes, and solder the chip on the FD3206P only if it passes:
 
 ```text
 ATtiny2313A, pin 1 over FD3206P pin 1
@@ -34,59 +49,11 @@ ATtiny2313A, pin 1 over FD3206P pin 1
   clip    1 2 3 7 8 9 11 12 16 17 18 19
 ```
 
-> [!IMPORTANT]
-> Tested on real FD3206P drives with both the ATtiny2313A and the ATtiny4313: whole-disk writes and game saves read back correctly. Back up any disk before writing to it.
+[Install](#install) covers every step, starting with the power board, which may carry a second lockout.
 
-<table>
-<tr>
-<td width="50%" valign="top">
+## Compared with other fixes
 
-**Nothing cut, nothing added**<br>
-Eight pins soldered to the FD3206P underneath. No trace cut, no wire, no resistor, no second chip.
-
-</td>
-<td width="50%" valign="top">
-
-**Pulls low, never drives high**<br>
-Each write-line pin is either an output at 0 or an input, so it cannot fight the FD3206P on the pin they share.
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-**10 cycles from edge to head**<br>
-An assembly interrupt switches the write line 1.25 us after each WRITE DATA fall; the closest edges are 4.7 us apart.
-
-</td>
-<td width="50%" valign="top">
-
-**MISRA C:2012, zero findings**<br>
-C17 checked in its debug and release configurations, with every register access kept in one assembly module.
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-**Every instruction executed**<br>
-20 simavr scenarios run each chip's release image at three clock speeds and fail if any instruction never runs.
-
-</td>
-<td width="50%" valign="top">
-
-**You flash what was tested**<br>
-Each release attaches the exact hex CI built and simulated, with its SHA-256 and a signed build attestation.
-
-</td>
-</tr>
-</table>
-
-## The problem
-
-Famicom Disk System drives made from late 1988 carry the Mitsumi FD3206P controller instead of the FD7201P. The FD3206P still lets the RAM adapter rewrite one file, but it lets go of the head's two write lines as soon as a write covers the whole disk, and the RAM adapter shows error 26. Such a drive cannot back up or restore a full disk.
-
-The classic fix cuts two traces and rebuilds the drive's write stage from a 74LS76 flip-flop and a 74LS45 driver. This firmware is that same write stage, running in a chip that sits on the controller.
+The classic fix cuts two traces and rebuilds the drive's write stage from a 74LS76 flip-flop and a 74LS45 driver.
 
 | | This firmware | GAL16V8 modchips | Classic wired mod |
 |:--|:--:|:--:|:--:|
@@ -121,14 +88,23 @@ Timing at 8 MHz:
 | Measure | Value | Source |
 |:--|:--|:--|
 | Interrupt taken to write line switched | 10 cycles, 1.25 us | instruction count |
-| Whole handler | about 30 cycles, 3.75 us, under the 4.7 us edge spacing | instruction count |
+| Whole handler | 32 cycles at worst, 4.0 us, under the 4.7 us edge spacing | instruction count |
 | Variation between edges | up to 3 cycles, 375 ns | AVR interrupt response, longest main-loop instruction `ret` |
 | Gate change to write lines released or engaged | 7.4 us worst, 8.2 us at 7.2 MHz; limit 10 us | simulation across 64 main-loop phases |
-| Same, with data edges at the fastest rate | 19 us worst, 23 us at 7.2 MHz; limit 100 us | simulation |
+| Same, with data edges at the fastest rate | 19 us worst, 28 us at 7.2 MHz; limit 100 us | simulation |
 | Interrupts held off by a condition change | 12 cycles, 1.5 us | instruction count |
 | Internal oscillator tolerance | every scenario passes at 7.2, 8.0 and 8.8 MHz | simulation at +/-10 percent |
 
 The drive writes at 96.4 kHz, a 10.4 us bit cell, so 375 ns of variation is 3.6 percent of a cell. A gate change lands in a gap of at least 480 bits between blocks, where microseconds of delay only shorten or lengthen the gap.
+
+## How it is checked
+
+| Check | What it covers |
+|:--|:--|
+| MISRA C:2012 | C17 checked in its debug and release configurations with zero findings; every register access is kept in one assembly module |
+| Simulation | 20 simavr scenarios run each chip's release image at three clock speeds and fail if any instruction never runs |
+| Timing budget | Every build counts the 15-instruction edge handler against its 33-cycle limit and the interrupts-off window against 12 cycles |
+| Release | Each release attaches the exact hex CI built and simulated, with its SHA-256 and a signed build attestation |
 
 ## Two lockouts
 
@@ -222,13 +198,7 @@ Reports on the nesdev forum `(as of 2026-09)`:
 
 ### Step 3: program the chip
 
-Each [release](https://github.com/gufranco/fd3206-write-unlock/releases) attaches one image per chip, `fd3206-write-unlock-attiny2313a.hex` and `fd3206-write-unlock-attiny4313.hex`, each with a `.sha256` file. With a USBasp:
-
-```sh
-sha256sum -c fd3206-write-unlock-attiny2313a.hex.sha256
-make fuses PROGRAMMER=usbasp
-avrdude -c usbasp -p t2313a -U flash:w:fd3206-write-unlock-attiny2313a.hex:i
-```
+Each [release](https://github.com/gufranco/fd3206-write-unlock/releases) attaches one image per chip, `fd3206-write-unlock-attiny2313a.hex` and `fd3206-write-unlock-attiny4313.hex`, each with a `.sha256` file. With a USBasp, run the three commands under [Usage](#usage).
 
 | Case | Change |
 |:--|:--|

@@ -94,7 +94,7 @@ The binding numbers, at the 8 MHz internal oscillator:
 | Interrupt taken to write line switched | 10 cycles, plus up to 3 for the instruction in progress | same |
 | Interrupts held off by a condition change | at most 12 cycles: `fdswu_port_commit_write_lines` picks between two precomputed plans with interrupts off | instruction count of `port.S` |
 | Clock | internal RC, specified at +/-10 percent at 3 V; every scenario runs at 7.2, 8.0 and 8.8 MHz | Microchip document 8246, section 6.2.3 |
-| Gate response | under 10 us without data edges, 7.4 us worst at 8 MHz and 8.2 us at 7.2 MHz across 64 main-loop phases; under 100 us while data edges arrive at the fastest rate, 19 us and 23 us today | a gate change falls in a gap of at least 480 bits, nesdev "FDS disk format" |
+| Gate response | under 10 us without data edges, 7.4 us worst at 8 MHz and 8.2 us at 7.2 MHz across 64 main-loop phases; under 100 us while data edges arrive at the fastest rate, 19 us and 28 us today | a gate change falls in a gap of at least 480 bits, nesdev "FDS disk format" |
 | Write-line pin sink current | 20 mA per pin | ATtiny2313A datasheet, Microchip document 8246 |
 
 A C interrupt that calls a helper saves every call-clobbered register and runs about 70 cycles, which is why the handler is assembly. Keep it free of `SREG` changes and of anything the C code owns: it reads and writes only `GPIOR0`, `GPIOR1`, `GPIOR2` and `DDRB`.
@@ -176,7 +176,7 @@ The repository is public. Secret scanning with push protection, Dependabot alert
 | The global gitignore ignores `*.patch`, which hid a file from a commit | `git status` did not list it | `git check-ignore -v` on any generated file before committing |
 | avr-ld keeps `.L` labels for relaxation, so objdump shows them as function headers; the coverage list stopped each function at its first local label and held 47 of 76 instructions | The suite still reported 0 instructions never executed | `.L` headers continue the enclosing function in `tools/list_instructions.py`, with a test |
 | Hand-picked mutants all died while 26 generated ones survived: the prescaler and watchdog set-up, which simavr leaves unchecked, the write-line phase after the gate opens, and on-chip assertions that could never fail | Every hand-picked break was caught | `make mutation` generates a mutant for every assembly instruction; the harness models the divide-by-8 start and the `CLKPCE` timed write, checks the whole watchdog register, and a scenario pins the write-line phase |
-| The README hero line kept 238 bytes of flash after the image shrank to 230, because the figures gate checked only its table | `make figures` rewrote the table and reported success | [`tools/doc_figures.py`](tools/doc_figures.py) also checks the hero's flash and handler figures and both scenario counts in every language, counting scenarios from the test table |
+| The README hero line kept 238 bytes of flash after the image shrank to 230, because the figures gate checked only its table | `make figures` rewrote the table and reported success | [`tools/doc_figures.py`](tools/doc_figures.py) also checks the flash and handler figures and both scenario counts in the prose of every language, counting scenarios from the test table |
 | The rising-edge scenario sampled the write lines 7 cycles after the fall, while the edge handler writes them up to 13 cycles after it, so the release image passed by one cycle | It passed on every clock | the scenario checks that the last write-line change lands within 13 cycles of the fall |
 | The reset scenario allowed 20 us to start, which no requirement states; the release image needs about 21 us and passed only because the first edge's window absorbed the rest | It passed on every clock | the scenario waits the same start-up time as a power-on |
 | The simavr ioctl macros build their code from a `char`; on x86_64 `char` is signed, so CI failed `-Wsign-conversion` while the aarch64 build was clean | The same image passed every gate on the Mac | `make analyse` compiles the harness and host tests with both `-fsigned-char` and `-funsigned-char` |
@@ -230,6 +230,8 @@ Facts about the neighbouring designs, each with its source, so nobody re-derives
 Nothing in this repository can drive a drive or a programmer, so a hardware result exists only when someone reports one. Ask before assuming a hardware run happened.
 
 Reported by the owner on 2026-10-13: the firmware runs on real FD3206P drives with both the ATtiny2313A and the ATtiny4313. On each, a game save and a whole-disk write read back correctly. The report names no power board, writer tool or release, and includes none of the pre-install readings and no logic-analyzer trace.
+
+Reported by the owner on 2026-11-18: everything was tested on real hardware and works. The report gives no readings and names no drive, power board or tool, so the questions under "Still open" stay open until the readings are recorded.
 
 | Question | Answer | Why simulation cannot |
 |---|---|---|

@@ -207,6 +207,35 @@ class MainTest(unittest.TestCase):
             code = doc_figures.main(self.arguments(root, *extra))
         return code, errors.getvalue()
 
+    def test_measure_asks_for_section_sizes_and_a_disassembly(self) -> None:
+        outputs = {
+            "attiny2313a.elf": SIZE_OUTPUT,
+            "attiny4313.elf": ATTINY4313_SIZE_OUTPUT,
+            "-d": OBJDUMP_OUTPUT,
+        }
+        with unittest.mock.patch.object(
+            doc_figures,
+            "run",
+            side_effect=lambda command: outputs[command[1 if "-d" in command else 2]],
+        ) as run:
+            doc_figures.measure(
+                make_root(),
+                "avr-size",
+                "avr-objdump",
+                "attiny2313a.elf",
+                "attiny4313.elf",
+            )
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(
+            commands,
+            [
+                ["avr-size", "-A", "attiny2313a.elf"],
+                ["avr-size", "-A", "attiny4313.elf"],
+                ["avr-objdump", "-d", "attiny2313a.elf"],
+            ],
+        )
+
     def test_stale_block_fails_the_check(self) -> None:
         root = make_root()
 

@@ -108,6 +108,24 @@ class MainTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         printed.assert_called_once_with("76 main\n80 apply_write_lines.lto_priv.0")
 
+    def test_asks_nm_for_defined_symbols_and_objdump_for_a_disassembly(self) -> None:
+        outputs = [completed(NM_OUTPUT), completed(OBJDUMP_OUTPUT)]
+        with (
+            unittest.mock.patch(
+                "tools.list_instructions.subprocess.run", side_effect=outputs
+            ) as run,
+            unittest.mock.patch("builtins.print"),
+        ):
+            list_instructions.main(
+                ["list_instructions.py", "objdump", "nm", "fw.elf", "a.o", "b.o"]
+            )
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(
+            commands,
+            [["nm", "--defined-only", "a.o", "b.o"], ["objdump", "-d", "fw.elf"]],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

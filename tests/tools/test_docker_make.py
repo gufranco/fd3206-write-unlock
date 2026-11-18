@@ -13,11 +13,11 @@ DOCKERFILE = "FROM scratch\n"
 REQUIREMENTS = "ruff==1.0\n"
 
 
-def make_root(dockerfile: str) -> Path:
+def make_root(dockerfile: str, requirements: str = REQUIREMENTS) -> Path:
     root = Path(tempfile.mkdtemp())
     (root / "docker").mkdir()
     (root / "Dockerfile").write_text(dockerfile)
-    (root / "docker" / "requirements-tools.txt").write_text(REQUIREMENTS)
+    (root / "docker" / "requirements-tools.txt").write_text(requirements)
     return root
 
 
@@ -39,6 +39,13 @@ class ImageTagTest(unittest.TestCase):
         first = docker_make.image_tag(make_root(DOCKERFILE))
 
         second = docker_make.image_tag(make_root(DOCKERFILE + "RUN true\n"))
+
+        self.assertNotEqual(first, second)
+
+    def test_tag_changes_when_a_tool_pin_changes(self) -> None:
+        first = docker_make.image_tag(make_root(DOCKERFILE))
+
+        second = docker_make.image_tag(make_root(DOCKERFILE, "ruff==2.0\n"))
 
         self.assertNotEqual(first, second)
 

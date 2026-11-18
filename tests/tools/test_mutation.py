@@ -190,6 +190,15 @@ class OutcomeTest(unittest.TestCase):
 
         self.assertEqual(outcome, mutation.SURVIVED)
 
+    def test_a_survivor_passed_the_build_and_the_whole_test_target(self) -> None:
+        runner = unittest.mock.Mock(return_value=0)
+
+        result = mutation.outcome(make_repository(), runner)
+
+        commands = [call.args[0] for call in runner.call_args_list]
+        self.assertEqual(result, "survived")
+        self.assertEqual(commands, [["make", "images"], ["make", "test"]])
+
 
 class RunCommandTest(unittest.TestCase):
     def test_exit_code_is_returned(self) -> None:

@@ -17,6 +17,7 @@ TEST_TARGET = "test"
 KILLED_BY_BUILD = "killed by build"
 KILLED_BY_TESTS = "killed by tests"
 SURVIVED = "survived"
+BROKEN_BUILD = "the unmutated copy stopped building, so no result means anything"
 IGNORED = shutil.ignore_patterns(
     "build", ".git", "node_modules", "docs", "specs", "__pycache__", "dist"
 )
@@ -300,6 +301,13 @@ def judge(root: Path, mutant: Mutant | LineMutant | None, runner: Runner) -> str
         return outcome(copy, runner)
 
 
+def builds_unmutated(root: Path, runner: Runner) -> bool:
+    with tempfile.TemporaryDirectory() as scratch:
+        copy = Path(scratch) / "repository"
+        copy_repository(root, copy)
+        return runner(["make", BUILD_TARGET], copy) == 0
+
+
 def main(arguments: list[str], runner: Runner = run_command) -> int:
     if len(arguments) != ARGUMENT_COUNT:
         print("usage: mutation.py <repository>", file=sys.stderr)
@@ -327,6 +335,9 @@ def main(arguments: list[str], runner: Runner = run_command) -> int:
         except MutationError as error:
             failures = [*failures, str(error)]
             continue
+        if result == KILLED_BY_BUILD and not builds_unmutated(root, runner):
+            print(BROKEN_BUILD, file=sys.stderr)
+            return 1
         line = f"{result}: {mutant.name}"
         if result == SURVIVED:
             failures = [*failures, line]

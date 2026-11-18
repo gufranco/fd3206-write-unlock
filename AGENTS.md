@@ -134,7 +134,8 @@ make test       host tests at 100 percent line and branch, then the simavr suite
 make misra      the MISRA C:2012 gate alone, also part of analyse
 make mutation   delete every assembly instruction, swap every skip, bit set and interrupt flag, zero every
                 loaded constant, flip every comparison and logical operator in the C sources, plus 14
-                hand-written breaks; each must fail the build or the tests, except the equivalent
+                hand-written breaks; each must fail the build or the tests, a build failure counting only
+                while the unmutated copy still builds, except the equivalent
                 mutants `tools/mutation.py` lists with their reasons; a run that generates none fails
 make reproducible  build twice at different paths; both images must match byte for byte
 make figures    rewrite the README figures block

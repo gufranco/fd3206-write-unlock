@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import io
+import itertools
 import sys
 import tempfile
 import unittest
@@ -33,6 +34,17 @@ def mutant_only(build: int, tests: int) -> mutation.Runner:
     def runner(command: list[str], cwd: Path) -> int:
         mutated = (cwd / "src" / "gate.c").read_text() != "return pins == 0U;\n"
         return exit_codes(build, tests)(command, cwd) if mutated else 0
+
+    return runner
+
+
+def build_breaks_after_the_baseline() -> mutation.Runner:
+    builds = itertools.count()
+
+    def runner(command: list[str], _cwd: Path) -> int:
+        if mutation.BUILD_TARGET not in command:
+            return 0
+        return 0 if next(builds) == 0 else 2
 
     return runner
 
@@ -229,6 +241,19 @@ class MainTest(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertIn("killed by tests: inverted gate", out)
+
+    def test_build_kill_counts_while_the_unmutated_copy_builds(self) -> None:
+        code, out, _ = self.run_main(mutant_only(build=2, tests=0), (MUTANT,))
+
+        self.assertEqual(code, 0)
+        self.assertIn("killed by build: inverted gate", out)
+
+    def test_build_that_breaks_for_every_copy_ends_the_run(self) -> None:
+        code, out, err = self.run_main(build_breaks_after_the_baseline(), (MUTANT,))
+
+        self.assertEqual(code, 1)
+        self.assertIn("unmutated copy stopped building", err)
+        self.assertEqual(out, "")
 
     def test_survivor_fails(self) -> None:
         code, _, err = self.run_main(mutant_only(build=0, tests=0), (MUTANT,))

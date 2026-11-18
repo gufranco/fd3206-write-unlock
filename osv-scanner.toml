@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Gustavo Franco <gufranco@users.noreply.github.com>
+# SPDX-License-Identifier: MIT
+
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+reason = "No picomatch release fixes it, and the release tooling only matches patterns written in .releaserc.json. The waiver and its revisit condition are in AGENTS.md."

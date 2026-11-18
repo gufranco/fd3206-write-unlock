@@ -10,8 +10,8 @@ from pathlib import Path
 from tools import layer_check
 
 
-def make_tree(files: dict[str, str]) -> Path:
-    root = Path(tempfile.mkdtemp())
+def make_tree(files: dict[str, str], folder: str = "repository") -> Path:
+    root = Path(tempfile.mkdtemp()) / folder
     for name, text in files.items():
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,6 +65,17 @@ class ViolationTest(unittest.TestCase):
         violations = layer_check.violations(root)
 
         self.assertEqual([v.included for v in violations], ["write_plan.c"])
+
+    def test_a_checkout_in_a_folder_named_port_is_still_layered(self) -> None:
+        dirty = {**CLEAN_TREE, "src/write_plan.c": "#include <avr/io.h>\n"}
+        root = make_tree(dirty, folder="port")
+
+        violations = layer_check.violations(root)
+
+        self.assertEqual(
+            [(v.path.name, v.included) for v in violations],
+            [("write_plan.c", "avr/io.h")],
+        )
 
 
 class PlatformCTest(unittest.TestCase):

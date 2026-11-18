@@ -51,8 +51,8 @@ def rule_for(path: Path) -> Callable[[str], bool]:
     return platform_c_allows if path.name in PLATFORM_SOURCES else logic_allows
 
 
-def check(path: Path) -> list[Violation]:
-    allows = rule_for(path)
+def check(root: Path, path: Path) -> list[Violation]:
+    allows = rule_for(path.relative_to(root))
     found = [
         Violation(path, name, "source file included")
         for name in includes(path)
@@ -77,7 +77,7 @@ def violations(root: Path) -> list[Violation]:
     files = sorted(
         [*root.glob("include/**/*.h"), *root.glob("src/*.c"), *root.glob("src/*.S")]
     )
-    return [violation for path in files for violation in check(path)]
+    return [violation for path in files for violation in check(root, path)]
 
 
 def main(arguments: list[str]) -> int:

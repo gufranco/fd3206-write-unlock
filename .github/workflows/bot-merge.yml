@@ -61,6 +61,11 @@ jobs:
             echo "${waiting} check(s) on ${HEAD_SHA} are not green yet"
             exit 0
           fi
+          mergeable="$(gh pr view "${number}" --repo "${REPO}" --json mergeable -q .mergeable)"
+          if [ "${mergeable}" = "CONFLICTING" ]; then
+            echo "pull request ${number} conflicts with ${DEFAULT_BRANCH}; its bot rebases it"
+            exit 0
+          fi
           title="$(gh pr view "${number}" --repo "${REPO}" --json title -q .title)"
           gh pr merge "${number}" --repo "${REPO}" --squash \
             --match-head-commit "${HEAD_SHA}" \

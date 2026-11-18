@@ -12,6 +12,7 @@ from tools import commit_message
 
 ZERO_SHA = "0" * 40
 DEPENDABOT_EMAIL = "49699333+dependabot[bot]@users.noreply.github.com"
+RENOVATE_EMAIL = "29139614+renovate[bot]@users.noreply.github.com"
 
 
 def git(root: Path, *arguments: str) -> str:
@@ -168,6 +169,17 @@ class MainTest(unittest.TestCase):
         )
 
         code, errors = self.run_main("--range", f"{shas[0]}..{shas[2]}", cwd=root)
+
+        self.assertEqual((code, errors), (0, ""))
+
+    def test_range_skips_a_renovate_squash_commit(self) -> None:
+        long_subject = "chore(deps): update dependency python to v3.15.2 (#19)"
+        root, shas = make_repository(
+            ["feat: first", long_subject],
+            authors={1: f"renovate[bot] <{RENOVATE_EMAIL}>"},
+        )
+
+        code, errors = self.run_main("--range", f"{shas[0]}..{shas[1]}", cwd=root)
 
         self.assertEqual((code, errors), (0, ""))
 

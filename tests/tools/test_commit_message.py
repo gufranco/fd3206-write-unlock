@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import io
+import os
 import subprocess
 import tempfile
 import unittest
@@ -11,6 +12,18 @@ from pathlib import Path
 from tools import commit_message
 
 ZERO_SHA = "0" * 40
+NO_MACHINE_GIT_CONFIG = {
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_SYSTEM": os.devnull,
+}
+
+
+def setUpModule() -> None:
+    isolation = unittest.mock.patch.dict(os.environ, NO_MACHINE_GIT_CONFIG)
+    isolation.start()
+    unittest.addModuleCleanup(isolation.stop)
+
+
 DEPENDABOT_EMAIL = "49699333+dependabot[bot]@users.noreply.github.com"
 RENOVATE_EMAIL = "29139614+renovate[bot]@users.noreply.github.com"
 
@@ -119,8 +132,15 @@ class CheckTest(unittest.TestCase):
 
         self.assertEqual(problems, [])
 
-    def test_skip_token_in_a_comment_line_is_ignored(self) -> None:
+    def test_skip_token_in_a_comment_line_is_reported(self) -> None:
         problems = commit_message.check("fix: repair\n# [skip ci]\n")
+
+        self.assertEqual(problems, [commit_message.SKIP_PROBLEM])
+
+    def test_text_after_the_scissors_line_is_not_searched(self) -> None:
+        message = f"fix: repair\n{commit_message.SCISSORS}\n+quotes [skip ci]\n"
+
+        problems = commit_message.check(message)
 
         self.assertEqual(problems, [])
 
@@ -182,6 +202,29 @@ class MainTest(unittest.TestCase):
         code, errors = self.run_main("--range", f"{shas[0]}..{shas[1]}", cwd=root)
 
         self.assertEqual((code, errors), (0, ""))
+
+    def test_range_reports_a_skip_token_in_a_bot_commit(self) -> None:
+        root, shas = make_repository(
+            ["feat: first", "build: bump a tool\n\n[skip ci]"],
+            authors={1: f"dependabot[bot] <{DEPENDABOT_EMAIL}>"},
+        )
+
+        code, errors = self.run_main("--range", f"{shas[0]}..{shas[1]}", cwd=root)
+
+        self.assertEqual(code, 1)
+        self.assertIn(commit_message.SKIP_PROBLEM, errors)
+
+    def test_range_checks_an_author_who_only_resembles_a_bot(self) -> None:
+        long_subject = "build: bump the python-tools group across 1 directory"
+        root, shas = make_repository(
+            ["feat: first", long_subject],
+            authors={1: f"dependabot[bot] <not-{DEPENDABOT_EMAIL}>"},
+        )
+
+        code, errors = self.run_main("--range", f"{shas[0]}..{shas[1]}", cwd=root)
+
+        self.assertEqual(code, 1)
+        self.assertIn("over 50", errors)
 
     def test_range_still_checks_a_person_writing_a_long_subject(self) -> None:
         root, shas = make_repository(

@@ -31,7 +31,10 @@ SKIP_TOKEN = re.compile(
 RELEASE_HEADER = re.compile(r"^chore\(release\): \d+\.\d+\.\d+ \[skip ci\]$")
 SKIP_PROBLEM = "message asks GitHub to skip every workflow for this commit"
 MAX_HEADER = 50
-BOT_AUTHORS = ("dependabot[bot]", "renovate[bot]", "semantic-release-bot")
+BOT_AUTHOR = re.compile(
+    r"^(?:\d+\+)?(?:dependabot\[bot\]|renovate\[bot\]|semantic-release-bot)@"
+)
+SCISSORS = "# ------------------------ >8 ------------------------"
 USAGE_ERROR = 2
 ARGUMENT_COUNT = 3
 REPOSITORY: Path | None = None
@@ -45,9 +48,17 @@ def header_of(message: str) -> str:
     return next((line for line in content_lines(message) if line.strip()), "")
 
 
+def committed_text(message: str) -> str:
+    return message.split(SCISSORS, 1)[0]
+
+
 def skips_ci(message: str, header: str) -> bool:
-    found = SKIP_TOKEN.search("\n".join(content_lines(message))) is not None
+    found = SKIP_TOKEN.search(committed_text(message)) is not None
     return found and not RELEASE_HEADER.match(header)
+
+
+def skip_problems(message: str) -> list[str]:
+    return [SKIP_PROBLEM] if skips_ci(message, header_of(message)) else []
 
 
 def check(message: str) -> list[str]:
@@ -64,9 +75,7 @@ def check(message: str) -> list[str]:
         problems = [*problems, f"header is {len(header)} characters, over {MAX_HEADER}"]
     if header.endswith("."):
         problems = [*problems, "subject ends with a period"]
-    if skips_ci(message, header):
-        problems = [*problems, SKIP_PROBLEM]
-    return problems
+    return [*problems, *skip_problems(message)]
 
 
 def git(*arguments: str) -> str:
@@ -83,8 +92,12 @@ def commits_in(revision_range: str) -> list[str]:
 
 
 def written_by_a_bot(sha: str) -> bool:
-    author = git("log", "-1", "--format=%ae", sha)
-    return any(bot in author for bot in BOT_AUTHORS)
+    return BOT_AUTHOR.match(git("log", "-1", "--format=%ae", sha)) is not None
+
+
+def commit_problems(sha: str) -> list[str]:
+    message = git("log", "-1", "--format=%B", sha)
+    return skip_problems(message) if written_by_a_bot(sha) else check(message)
 
 
 def report(label: str, problems: list[str]) -> list[str]:
@@ -99,8 +112,7 @@ def main(arguments: list[str]) -> int:
         errors = [
             error
             for sha in commits_in(arguments[2])
-            if not written_by_a_bot(sha)
-            for error in report(sha[:12], check(git("log", "-1", "--format=%B", sha)))
+            for error in report(sha[:12], commit_problems(sha))
         ]
     else:
         print(

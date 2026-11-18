@@ -5,8 +5,32 @@
   ],
   "enabledManagers": [
     "github-actions",
-    "asdf"
+    "asdf",
+    "custom.regex"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG DEBIAN_SNAPSHOT=(?<currentValue>\\d{8}T\\d{6}Z)"
+      ],
+      "depNameTemplate": "debian-snapshot",
+      "datasourceTemplate": "custom.debian-snapshot",
+      "versioningTemplate": "regex:^(?<major>\\d{8})T(?<minor>\\d{6})Z$"
+    }
+  ],
+  "customDatasources": {
+    "debian-snapshot": {
+      "defaultRegistryUrlTemplate": "https://snapshot.debian.org/mr/timestamp/?archive=debian&after=2026-10-01",
+      "format": "json",
+      "transformTemplates": [
+        "{\"releases\": result.debian.{\"version\": $}}"
+      ]
+    }
+  },
   "dependencyDashboard": false,
   "schedule": [
     "before 6am on monday"
@@ -40,6 +64,12 @@
         "python"
       ],
       "allowedVersions": "<3.14"
+    },
+    {
+      "matchDatasources": [
+        "custom.debian-snapshot"
+      ],
+      "semanticCommitType": "build"
     }
   ]
 }

@@ -110,6 +110,7 @@ include/fdswu/       logic-layer headers: pins, write plan, conditions, assertio
 include/port/        C prototypes of the port module, register names for the assembly
 src/                 firmware: logic modules, main loop, assembly port module, INT0 handler
 tests/host/          host unit tests of the logic layer
+tests/fuzz/          libFuzzer target over the logic layer, built with clang and the address and undefined-behaviour sanitizers
 tests/sim/           simavr harness and the 20 scenarios, run on each chip's image at 7.2, 8.0 and 8.8 MHz
 tests/tools/         unit tests of the Python tools
 tests/type_widths.c  compile-time record of type widths per compiler
@@ -128,7 +129,8 @@ make            release hex for each chip, in Docker
 make size       firmware size
 make analyse    clang-format, ruff, mypy --strict, yamllint, style gate, layer check, REUSE, type widths, cppcheck with MISRA, README figures,
                 hex size and edge-handler cycle budget per chip, tool tests at 100 percent
-make test       host tests at 100 percent line and branch, then the simavr suite at 100 percent instructions
+make test       host tests at 100 percent line and branch, a libFuzzer run of 1,000,000 inputs from a fixed seed over
+                the logic layer, then the simavr suite at 100 percent instructions
                 on each chip at three clocks, failing past 32 bytes of stack, on a stack that reaches
                 static data, or on any instruction that leaves a write line driven high, both pulled low or another port B pin driven
 make misra      the MISRA C:2012 gate alone, also part of analyse
@@ -273,7 +275,7 @@ simavr runs headless and opens nothing. Any other emulator used for a check runs
 ## State (as of 2026-11-18)
 
 - Latest release v1.0.5: `fd3206-write-unlock-attiny2313a.hex` SHA-256 `53937f09bf5ad84a8cd3d4fd1159400f92c54a7e02aa64f102424d7111e9fc29`, `fd3206-write-unlock-attiny4313.hex` SHA-256 `72e293a25c19b02a693dfd483a4b4bec890c54f59caf9bdcff59a8b32eb13df3`. The ATtiny2313A image uses 230 bytes of flash and the ATtiny4313 image 234, the four extra bytes being its SPH start-up write.
-- `make analyse test` is green: 20 simavr scenarios on both chips at three clocks, host and tool tests at 100 percent coverage. The mutation run has 78 mutants, with two equivalent ones recorded.
+- `make analyse test` is green: 20 simavr scenarios on both chips at three clocks, host and tool tests at 100 percent coverage, and the libFuzzer run over the logic layer. The mutation run has 78 mutants, with two equivalent ones recorded.
 - Runs on real hardware, reported 2026-10-13: game saves and whole-disk writes read back on FD3206P drives with both chips. On 2026-11-18 the owner reported that everything was tested on real hardware and works, with no readings.
 - Hardware checks still open, each on a disk that can be lost:
   1. With the chip not installed and no disk: pins 14 and 15 idle at 5.5 V or less, and the powered 1 kOhm test gives 250 Ohm or more.
@@ -286,4 +288,4 @@ simavr runs headless and opens nothing. Any other emulator used for a check runs
 - No electrical measurement from a real drive is recorded: the idle voltage and source resistance of pins 14 and 15, the pulled-low level, and the edge-to-write-line delay remain unmeasured.
 - Which power boards and writer tools the working drives used is not recorded.
 - The Renovate rule for `DEBIAN_SNAPSHOT` was checked against Renovate's published schema only; its first scheduled run shows whether it opens a pull request.
-- Five Scorecard checks stay below 10: Code-Review and Branch-Protection, because changes are pushed straight to `main` with no pull request; Fuzzing, because no fuzzer is integrated, the logic layer being checked on all 65,536 inputs instead; CII-Best-Practices, which needs the owner to register the project at bestpractices.dev; and Maintained, until the repository is 90 days old on 2026-12-26.
+- Four Scorecard checks stay below 10: Code-Review and Branch-Protection, because changes are pushed straight to `main` with no pull request; CII-Best-Practices, which needs the owner to register the project at bestpractices.dev; and Maintained, until the repository is 90 days old on 2026-12-26.

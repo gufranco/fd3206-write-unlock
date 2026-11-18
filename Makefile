@@ -26,7 +26,7 @@ RELEASE := $(BUILD)/$(MCU)/release
 RELEASE_ELF := $(call image_path,$(MCU)).elf
 RELEASE_HEX := $(call image_path,$(MCU)).hex
 
-CONTAINER_TARGETS := all size analyse hosttest simtest test mutation reproducible misra figures
+CONTAINER_TARGETS := all size analyse hosttest fuzztest simtest test mutation reproducible misra figures
 
 .PHONY: $(CONTAINER_TARGETS) images image fuses flash hooks clean
 
@@ -63,8 +63,11 @@ FIRMWARE_S := $(sort $(wildcard src/*.S))
 FIRMWARE_H := $(sort $(wildcard include/*/*.h))
 LOGIC_C := src/conditions.c src/write_plan.c
 HOST_TEST_C := tests/host/host_test.c tests/host/host_assert.c
+FUZZ_TARGET_C := tests/fuzz/logic_fuzz.c
+FUZZ_TEST_C := $(FUZZ_TARGET_C) tests/host/host_assert.c
 SIM_TEST_C := tests/sim/sim_test.c tests/sim/scenario.c tests/sim/board.c
-C_FILES := $(FIRMWARE_C) $(FIRMWARE_H) $(HOST_TEST_C) $(SIM_TEST_C) tests/sim/board.h tests/sim/scenario.h tests/type_widths.c
+C_FILES := $(FIRMWARE_C) $(FIRMWARE_H) $(HOST_TEST_C) $(FUZZ_TARGET_C) $(SIM_TEST_C) tests/sim/board.h tests/sim/scenario.h \
+	tests/type_widths.c
 
 GIT_HOOKS := .githooks/pre-commit .githooks/commit-msg
 C_STD := -std=c17 -pedantic-errors
@@ -76,6 +79,11 @@ AVR_CFLAGS := -mmcu=$(MCU) -DF_CPU=$(F_CPU) $(C_STD) -Os -flto -ffat-lto-objects
 AVR_ASFLAGS := -mmcu=$(MCU) -x assembler-with-cpp -Iinclude -Wall -Wextra -Werror
 AVR_LDFLAGS := -mmcu=$(MCU) -Os -flto -Wl,--gc-sections
 HOST_CFLAGS := $(C_STD) -Iinclude $(WARNINGS)
+FUZZ_CC := clang
+FUZZ_CFLAGS := $(HOST_CFLAGS) -O1 -g -DFDSWU_DEBUG -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all
+FUZZ_RUNS := 1000000
+FUZZ_SEED := 1
+FUZZ_INPUT_BYTES := 3
 SIM_CFLAGS := $(C_STD) -O2 $(WARNINGS) $(patsubst -I%,-isystem %,$(shell pkg-config --cflags simavr libelf))
 SIM_LIBS := $(shell pkg-config --libs simavr libelf)
 
@@ -83,6 +91,7 @@ RELEASE_OBJECTS := $(patsubst src/%,$(RELEASE)/%.o,$(FIRMWARE_C) $(FIRMWARE_S))
 INSTRUCTIONS := $(call image_path,$(MCU)).insn
 RELEASE_ELFS := $(foreach mcu,$(MCUS),$(call image_path,$(mcu)).elf)
 HOST_TEST := $(BUILD)/host/host_test
+FUZZ_TEST := $(BUILD)/fuzz/logic_fuzz
 SIM_TEST := $(BUILD)/sim/sim_test
 
 CPPCHECK_FLAGS := --std=c17 --platform=avr8 --enable=all --check-level=exhaustive --error-exitcode=1 \
@@ -119,6 +128,10 @@ $(HOST_TEST): $(LOGIC_C) $(HOST_TEST_C) $(FIRMWARE_H)
 	@mkdir -p $(@D)
 	$(HOST_CC) $(HOST_CFLAGS) -O0 -DFDSWU_DEBUG --coverage -o $@ $(LOGIC_C) $(HOST_TEST_C)
 
+$(FUZZ_TEST): $(LOGIC_C) $(FUZZ_TEST_C) $(FIRMWARE_H)
+	@mkdir -p $(@D)
+	$(FUZZ_CC) $(FUZZ_CFLAGS) -o $@ $(LOGIC_C) $(FUZZ_TEST_C)
+
 $(SIM_TEST): $(SIM_TEST_C) tests/sim/board.h tests/sim/scenario.h
 	@mkdir -p $(@D)
 	$(HOST_CC) $(SIM_CFLAGS) -o $@ $(SIM_TEST_C) $(SIM_LIBS)
@@ -143,8 +156,8 @@ analyse: images
 	$(HOST_CC) $(C_STD) -fsyntax-only tests/type_widths.c
 	$(HOST_CC) $(SIM_CFLAGS) -fsigned-char -fsyntax-only $(SIM_TEST_C)
 	$(HOST_CC) $(SIM_CFLAGS) -funsigned-char -fsyntax-only $(SIM_TEST_C)
-	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -fsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
-	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -funsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C)
+	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -fsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C) $(FUZZ_TARGET_C)
+	$(HOST_CC) $(HOST_CFLAGS) -DFDSWU_DEBUG -funsigned-char -fsyntax-only $(LOGIC_C) $(HOST_TEST_C) $(FUZZ_TARGET_C)
 	$(foreach config,$(CPPCHECK_CONFIGS),cppcheck $(CPPCHECK_FLAGS) $(config) --addon=misra $(FIRMWARE_C) &&) true
 	$(PYTHON) -m tools.doc_figures . $(AVR_SIZE) $(AVR_OBJDUMP) $(RELEASE_ELFS)
 	$(foreach mcu,$(MCUS),$(PYTHON) -m tools.check_hex $(call image_path,$(mcu)).hex --max-bytes $(FLASH_BYTES) &&) true
@@ -162,11 +175,14 @@ hosttest: $(HOST_TEST)
 	gcovr --root . --filter 'src/' --exclude-branches-by-pattern '.*FDSWU_ASSERT.*' \
 		--fail-under-line 100 --fail-under-branch 100 --print-summary $(BUILD)/host
 
+fuzztest: $(FUZZ_TEST)
+	$(FUZZ_TEST) -runs=$(FUZZ_RUNS) -seed=$(FUZZ_SEED) -max_len=$(FUZZ_INPUT_BYTES) -artifact_prefix=$(BUILD)/fuzz/
+
 simtest: $(SIM_TEST) images
 	$(foreach mcu,$(MCUS),$(foreach clock,$(SIM_CLOCKS_HZ),\
 		$(SIM_TEST) $(mcu) $(call image_path,$(mcu)).elf $(call image_path,$(mcu)).insn $(clock) &&)) true
 
-test: hosttest simtest
+test: hosttest fuzztest simtest
 
 mutation:
 	$(PYTHON) -m tools.mutation .

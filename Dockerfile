@@ -39,6 +39,9 @@ RUN apt-get update \
       cmake \
       g++ \
       clang-format=1:19.0-63 \
+      clang=1:19.0-63 \
+      libclang-rt-19-dev \
+      llvm-19 \
       gcovr \
       python3 \
       python3-venv \
